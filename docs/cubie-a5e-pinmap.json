@@ -2,6 +2,8 @@
   "board": "Radxa Cubie A5E",
   "soc": "Allwinner A527 (sun55i)",
   "source": "https://docs.radxa.com/en/cubie/a5e/hardware-use/pin-gpio",
+  "source_author": "Radxa Computer (Shenzhen) Co., Ltd",
+  "source_license": "CC BY 4.0",
   "verified": "2026-11-21",
   "numbering_rule": {
     "gpiochip1": "banks PA..PK, line = num + 32 * bank_index (A=0 .. K=10), 352 lines",

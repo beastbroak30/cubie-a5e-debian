@@ -1,0 +1,16 @@
+bt_test
+
+Extracted from Radxa's `aicrf-test` package, shipped inside the official
+Radxa Cubie A5E image (/usr/bin/bt_test).
+
+Copyright: Radxa Computer Co., Ltd
+Upstream:  https://github.com/radxa-pkg/aic8800
+License:   GPL-3+ (as declared by the Radxa packaging)
+
+Full license text: ../../LICENSES/GPL-3.0-or-later.txt
+Packaging copyright: aicrf-test.copyright (same directory)
+
+Note: this binary is not required by the shipped configuration. Bluetooth
+comes up with plain `hciattach -s 1500000 /dev/ttyAS1 any 1500000 flow nosleep`
+(see scripts/board/aic8800-bt-up related work). It is kept only as a
+reference/test tool.

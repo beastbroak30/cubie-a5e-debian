@@ -11,6 +11,7 @@ kernel.
 ## 1. Hardware truth (verified 2026-11-21)
 
 Source: https://docs.radxa.com/en/cubie/a5e/hardware-use/pin-gpio
+Attribution: Radxa Computer (Shenzhen) Co., Ltd, CC BY 4.0
 Data file: `docs/cubie-a5e-pinmap.json`
 
 Two GPIO chips, both usable through the libgpiod character device:

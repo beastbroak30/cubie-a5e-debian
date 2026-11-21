@@ -295,8 +295,14 @@ Backups taken 2026-11-21 before any further work:
 
 | Artifact | SHA256 |
 |---|---|
-| `output/cubie-a5e-lite-arm64.img` | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` |
+| `output/cubie-a5e-lite-arm64.img` (as booted) | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` |
 | `backups/cubie-a5e-lite-arm64-2026-11-21.img.gz` (792 MB) | `7385b001d407913f196455eabfc8c7c208ea04c0a84f3d3ac971c7b27697c9f1` |
+| `output/cubie-a5e-lite-arm64.img` (after license + attribution patch) | `dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df` |
+
+Author of record: **beastbroak30** — kernel and firmware development. Credit is inside the
+image (`/usr/share/doc/cubie-a5e-debian/AUTHORS` and `NOTICE`), in `README.md` and in
+`LICENSE`. The license audit and third-party obligations are tracked in
+`docs/LICENSES.md`; kernel/U-Boot/firmware source offer is in `README.md`.
 
 RPi-compatibility plan lives in `docs/RPI-COMPAT-PLAN.md`. Its binding rule: map by
 **physical header pin** only. The A527 has no BCM numbering, and the

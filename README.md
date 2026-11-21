@@ -69,7 +69,35 @@ Test reports are the most useful contribution: which HAT or sensor, which pins, 
 image build, what worked. Open an issue with the output of `cubie-pinout` and
 `gpioinfo` (once the tooling lands).
 
+## Authors
+
+Kernel and firmware development: **beastbroak30** — the Debian 12 image for the Radxa
+Cubie A5E and the AIC8800D80 Wi-Fi/BLE bring-up.
+
+Upstream work this builds on: Radxa Computer (Shenzhen) Co., Ltd (BSP kernel, U-Boot,
+firmware packaging), AICSemi (AIC8800 driver and firmware), the Debian Project.
+
 ## License
 
-MIT for scripts and code, CC BY 4.0 for the documentation, matching the Radxa docs that
-the pin map is derived from.
+MIT for scripts and code (`LICENSE`), CC BY 4.0 for the documentation (`docs/`), matching
+the Radxa documentation the pin map is derived from — attribution: Radxa Computer
+(Shenzhen) Co., Ltd.
+
+Third-party components that ship inside the image or this repo keep their own licenses;
+the full audit is in [`docs/LICENSES.md`](docs/LICENSES.md). Kernel and driver license
+texts are in [`LICENSES/`](LICENSES).
+
+## Source offer (GPL compliance)
+
+The published image contains a **GPL-2.0** Linux kernel (`5.15.147+`) and GPL-2 AIC8800
+kernel modules. Corresponding source:
+
+| Component | Source | Build |
+|---|---|---|
+| Linux kernel + modules | https://github.com/radxa-pkg/linux-aw2501 | `scripts/build/` (60-, 61-, 64- steps) |
+| U-Boot (inside `boot_package.fex`) | https://github.com/radxa-pkg/u-boot-aw2501 | not rebuilt; blob taken from Radxa's official image |
+| AIC8800 firmware | https://github.com/radxa-pkg/aic8800 | copied from Radxa's official image |
+
+Every published image was built from those trees with the scripts in this repository. If
+a tag or commit is ever unclear, open an issue and the exact source bundle will be provided
+on request.

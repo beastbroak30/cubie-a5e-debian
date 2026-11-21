@@ -25,22 +25,32 @@ Date: 2026-11-21.
 ## Obligations that follow
 
 1. **Kernel + modules (GPL-2)**: shipping the binary requires source availability. Satisfied
-   by building from `github.com/radxa-pkg/linux-aw2501` with `scripts/build/`, plus a
-   written offer in the README. Must keep doing this for every published image.
-2. **AIC8800 firmware (GPL-3+ per Radxa)**: the image ships 15 blobs but **no license text
-   or attribution**. Gap — fix by installing `/usr/share/doc/aic8800-firmware/copyright`
-   (copied from Radxa's package) next to the blobs.
-3. **`bt_test` (GPL-3+)**: redistributed inside this repo with no GPL-3 text. Gap — add
-   `LICENSES/GPL-3.0-or-later.txt` and a `tools/bin/NOTICE`, or drop the binary (the
-   working BT unit does not use it; plain `hciattach` is enough).
+   by building from `github.com/radxa-pkg/linux-aw2501` with `scripts/build/`, plus the
+   written offer in `README.md`.
+2. **AIC8800 firmware (GPL-3+ per Radxa)**: ✅ fixed — the image now ships
+   `/usr/share/doc/aic8800-firmware/copyright`, the full GPL-3 text, and
+   `/lib/firmware/aic8800d80/README.license` next to the 15 blobs.
+3. **`bt_test` (GPL-3+)**: ✅ fixed — `LICENSES/GPL-3.0-or-later.txt`, `tools/bin/NOTICE`
+   and `tools/bin/aicrf-test.copyright` are in the repo. The binary is not used by the
+   shipped configuration.
 4. **`boot0` + ATF**: no license grant for the Allwinner part. It is redistributed inside
    Radxa's official media, but a public release that contains it may exceed what Radxa
-   granted. Safer: publish the image only on request, or point users at Radxa's release and
-   document that the boot area comes from them unchanged.
-5. **Radxa docs (CC BY 4.0)**: attribution must name the author. `docs/cubie-a5e-pinmap.json`
-   cites the URL; add "Radxa Computer (Shenzhen) Co., Ltd" to the JSON and to
-   `docs/RPI-COMPAT-PLAN.md`.
+   granted. Open item — safe path is to have users take the boot area from Radxa's release
+   unchanged.
+5. **Radxa docs (CC BY 4.0)**: ✅ fixed — attribution "Radxa Computer (Shenzhen) Co., Ltd"
+   added to `docs/cubie-a5e-pinmap.json`, `docs/RPI-COMPAT-PLAN.md`, `README.md` and
+   `LICENSE`.
 6. **Debian packages**: nothing to do — `/usr/share/doc/*/copyright` travels with the image.
+7. **Authorship**: the image carries `/usr/share/doc/cubie-a5e-debian/AUTHORS` and a
+   matching line in `NOTICE`, crediting **beastbroak30** for kernel and firmware
+   development.
+
+## Image revisions
+
+| Revision | SHA256 | Change |
+|---|---|---|
+| pre-license patch (backup) | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` | as booted and verified on 2026-11-21 |
+| license + attribution patch | `dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df` | adds firmware/NOTICE/AUTHORS docs, no functional change |
 
 ## Note on Radxa's own declarations
 
