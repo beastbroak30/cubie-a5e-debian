@@ -266,19 +266,19 @@ Known state quirks:
 
 ## 12. Repository, backups, and the RPi-compatibility track
 
-Repo root (working copy): `D:\misc_prj\radxa_firmware` — git initialized 2026-11-21,
-initial commit `32de470`, 368 tracked files, ~1 MB. Build outputs, dumps and installers
-are git-ignored; the image ships as a release artifact, not as a commit.
+Published repo: **https://github.com/beastbroak30/cubie-a5e-debian** — created 2026-11-21,
+**private**, default branch `main`, description "Debian 12 (Bookworm) arm64 for the Radxa
+Cubie A5E (Allwinner A527), built from Radxa's BSP, plus a Raspberry Pi compatibility layer:
+verified 40-pin pin map, libgpiod, gpiozero, RPi.GPIO shim, overlay-driven I2C/SPI/UART/PWM."
+Topics: radxa, cubie-a5e, allwinner-a527, debian, debian-bookworm, arm64, sbc,
+raspberry-pi-compatible, gpio, libgpiod, gpiozero. Commit identity `beastbroak30`.
 
-Suggested publishable names, in order:
+Local working copy: `D:\misc_prj\radxa_firmware` — git initialized 2026-11-21, 374 tracked
+files, ~1 MB. Build outputs, dumps and installers are git-ignored; the image ships as a
+release asset, not as a commit.
 
-1. **`cubie-a5e-debian`** — recommended: names the OS work, leaves room for the RPi layer.
-2. `cubie-a5e-pihat` — if the repo ever narrows to GPIO/HAT compatibility only.
-3. `rpi-compat-cubie-a5e` — discovery-friendly for people searching RPi-compatible SBCs.
-
-Description line for the repo/forum post: "Debian 12 for the Radxa Cubie A5E, built from
-Radxa's BSP, plus a Raspberry Pi compatibility layer: verified 40-pin pin map, libgpiod,
-gpiozero, RPi.GPIO shim, overlay-driven I2C/SPI/UART/PWM."
+Alternate names if the repo ever splits: `cubie-a5e-pihat` (GPIO/HAT only),
+`rpi-compat-cubie-a5e` (discovery-friendly).
 
 Layout (moved out of `%TEMP%\opencode` on 2026-11-21, provenance in `docs/MOVE-LOG.txt`):
 
