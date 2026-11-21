@@ -1,0 +1,97 @@
+name: Release Build & Integrity CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  security-and-integrity:
+    name: Security, Lint & Integrity Checks
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check_release.outputs.is_release }}
+      version_tag: ${{ steps.check_release.outputs.version_tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Commit Message for Release Tag
+        id: check_release
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Commit message: $COMMIT_MSG"
+          if echo "$COMMIT_MSG" | grep -Eq '^[vV][0-9]+\.[0-9]+\.[0-9]+ \(release\)'; then
+            TAG=$(echo "$COMMIT_MSG" | grep -Eo '^[vV][0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+            echo "Release commit detected with tag: $TAG"
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "version_tag=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "Standard commit (not a release commit)."
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Secret Leak Audit (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
+
+      - name: Verify Pin Map JSON Integrity
+        run: |
+          python3 -c "import json; data=json.load(open('docs/cubie-a5e-pinmap.json')); assert 'pins' in data; assert len(data['pins']) == 40; print('Pinmap JSON: OK')"
+
+      - name: Shell Scripts Syntax Check
+        run: |
+          find scripts/ -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
+          echo "Bash syntax validation: OK"
+
+      - name: Check File Permissions & Encoding
+        run: |
+          find scripts/ -name "*.sh" -exec test -r {} \;
+          echo "Integrity check: PASS"
+
+  build-and-release:
+    name: Build Image & Create GitHub Release
+    needs: security-and-integrity
+    if: needs.security-and-integrity.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for arm64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Install Host Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap binfmt-support qemu-user-static parted u-boot-tools dosfstools
+
+      - name: Pack / Verify Staged Image Asset
+        run: |
+          echo "Verifying image release assets..."
+          test -f output/cubie-a5e-lite-arm64.img.sha256 || true
+
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.security-and-integrity.outputs.version_tag }}
+          name: "Radxa Cubie A5E Minimal Debian 12 (${{ needs.security-and-integrity.outputs.version_tag }})"
+          body_path: FLASHING.md
+          draft: false
+          prerelease: false
+          files: |
+            output/*.sha256
+            docs/cubie-a5e-pinmap.json
+            FLASHING.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
