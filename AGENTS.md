@@ -143,6 +143,9 @@ Mark `[x]` only after the artifact exists and was verified.
   `08:ef:6c:a9:84:88` / `:89` present).
   Rootfs auto-expand needed `cloud-guest-utils` (`growpart`) — that package is now in the image
   and the service deletes itself only after `resize2fs`.
+- [x] Phase 13 — License and attribution docs inside the image and on the live board:
+  `/usr/share/doc/cubie-a5e-debian/{NOTICE,AUTHORS}`, `/usr/share/doc/aic8800-firmware/`,
+  `/lib/firmware/aic8800d80/README.license`. Both trees verified identical after the push.
 
 ## 8. Source registry (fill with verified URLs only)
 
