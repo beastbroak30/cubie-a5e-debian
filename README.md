@@ -5,8 +5,6 @@ scratch, plus a compatibility layer that makes the board behave like a Raspberry
 development board: 40-pin GPIO, libgpiod, `gpiozero`, an `RPi.GPIO` shim, and
 overlay-driven buses (I2C / SPI / UART / PWM).
 
-Everything is traceable to an official Radxa source. No custom drivers, no invented
-device trees, no guessed pin numbers.
 
 ## Board
 
