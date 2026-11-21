@@ -260,3 +260,45 @@ Known state quirks:
   Verified: `hci0` up, BD address `A8:B5:8E:0D:73:B8`, `bluetooth.service` active.
 - `eth0`/`eth1` show `NO-CARRIER` until a cable is plugged; driver, MACs and systemd-networkd
   DHCP config are in place, so this is a cable check, not a software check.
+
+## 12. Repository, backups, and the RPi-compatibility track
+
+Repo root (working copy): `D:\misc_prj\radxa_firmware` — git initialized 2026-11-21,
+initial commit `32de470`, 368 tracked files, ~1 MB. Build outputs, dumps and installers
+are git-ignored; the image ships as a release artifact, not as a commit.
+
+Suggested publishable names, in order:
+
+1. **`cubie-a5e-debian`** — recommended: names the OS work, leaves room for the RPi layer.
+2. `cubie-a5e-pihat` — if the repo ever narrows to GPIO/HAT compatibility only.
+3. `rpi-compat-cubie-a5e` — discovery-friendly for people searching RPi-compatible SBCs.
+
+Description line for the repo/forum post: "Debian 12 for the Radxa Cubie A5E, built from
+Radxa's BSP, plus a Raspberry Pi compatibility layer: verified 40-pin pin map, libgpiod,
+gpiozero, RPi.GPIO shim, overlay-driven I2C/SPI/UART/PWM."
+
+Layout (moved out of `%TEMP%\opencode` on 2026-11-21, provenance in `docs/MOVE-LOG.txt`):
+
+```
+docs/               pin map JSON, RPi plan, reference image layout, board manifest
+scripts/build/      numbered image build steps (67 files)
+scripts/board/      board-side scripts (119 files)
+scripts/windows/    host-side PowerShell helpers (138 files)
+scripts/misc/       probes and analysis output (45 files)
+logs/               captured run output (37 files)
+tools/              AIC8800D80 firmware (15 blobs), bt_test
+backups/            rootfs dumps + image archive
+output/             image, checksum, Etcher installer
+```
+
+Backups taken 2026-11-21 before any further work:
+
+| Artifact | SHA256 |
+|---|---|
+| `output/cubie-a5e-lite-arm64.img` | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` |
+| `backups/cubie-a5e-lite-arm64-2026-11-21.img.gz` (792 MB) | `7385b001d407913f196455eabfc8c7c208ea04c0a84f3d3ac971c7b27697c9f1` |
+
+RPi-compatibility plan lives in `docs/RPI-COMPAT-PLAN.md`. Its binding rule: map by
+**physical header pin** only. The A527 has no BCM numbering, and the
+`num + 32 * bank` formula in `docs/cubie-a5e-pinmap.json` is verified against the running
+kernel (`PIN_3`, `PIN_5`, `PIN_15`, `PIN_22` line names), never inferred.
