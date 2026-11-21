@@ -51,6 +51,7 @@ Date: 2026-11-21.
 |---|---|---|
 | pre-license patch (backup) | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` | as booted and verified on 2026-11-21 |
 | license + attribution patch | `dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df` | adds firmware/NOTICE/AUTHORS docs, no functional change |
+| locale patch | `dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866` | generates `en_US.UTF-8` + `C.UTF-8`, sets `LANG=en_US.UTF-8`; fixes `btop` "No UTF-8 locale detected" |
 
 ## Note on Radxa's own declarations
 

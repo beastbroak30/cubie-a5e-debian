@@ -263,6 +263,10 @@ Known state quirks:
   Verified: `hci0` up, BD address `A8:B5:8E:0D:73:B8`, `bluetooth.service` active.
 - `eth0`/`eth1` show `NO-CARRIER` until a cable is plugged; driver, MACs and systemd-networkd
   DHCP config are in place, so this is a cable check, not a software check.
+- Locale: the first image shipped only `C`/`C.utf8`/`POSIX` and an empty `LANG`, so `btop`
+  aborted with `ERROR: No UTF-8 locale detected!`. Fixed by generating `en_US.UTF-8` in
+  `/etc/locale.gen` and `update-locale LANG=en_US.UTF-8`, both on the live board and in the
+  master image. Script: `scripts/board/fix_locale.sh`.
 
 ## 12. Repository, backups, and the RPi-compatibility track
 
@@ -301,6 +305,7 @@ Backups taken 2026-11-21 before any further work:
 | `output/cubie-a5e-lite-arm64.img` (as booted) | `eee1d63ad59bd231df9e5e0f62e8f81de46ab8f3a77872a1672f726cfcfc9942` |
 | `backups/cubie-a5e-lite-arm64-2026-11-21.img.gz` (792 MB) | `7385b001d407913f196455eabfc8c7c208ea04c0a84f3d3ac971c7b27697c9f1` |
 | `output/cubie-a5e-lite-arm64.img` (after license + attribution patch) | `dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df` |
+| `output/cubie-a5e-lite-arm64.img` (after locale patch) | `dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866` |
 
 Author of record: **beastbroak30** — kernel and firmware development. Credit is inside the
 image (`/usr/share/doc/cubie-a5e-debian/AUTHORS` and `NOTICE`), in `README.md` and in

@@ -14,7 +14,7 @@ request; see `README.md`. The build itself is reproducible from `scripts/build/`
 Current image SHA256:
 
 ```
-dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df  cubie-a5e-lite-arm64.img
+dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866  cubie-a5e-lite-arm64.img
 ```
 
 ## Step 1 — verify the image

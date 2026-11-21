@@ -25,7 +25,7 @@ device trees, no guessed pin numbers.
 on first boot. It is **not stored in this repository**; it ships as a release asset.
 
 ```
-sha256  dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df
+sha256  dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866
 ```
 
 Reproducible from `scripts/build/` against the sources listed under *Source offer* below.
