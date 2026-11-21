@@ -21,8 +21,14 @@ device trees, no guessed pin numbers.
 
 ## Image
 
-`output/cubie-a5e-lite-arm64.img` — 4 GiB, three GPT partitions, expands the rootfs to the
-full card on first boot.
+`cubie-a5e-lite-arm64.img` — 4 GiB, three GPT partitions, expands the rootfs to the full card
+on first boot. It is **not stored in this repository**; it ships as a release asset.
+
+```
+sha256  dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df
+```
+
+Reproducible from `scripts/build/` against the sources listed under *Source offer* below.
 
 | Check | Value |
 |---|---|
