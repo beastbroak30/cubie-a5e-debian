@@ -1,0 +1,53 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261121145932
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\run_write_p3_ncm.ps1
+Process ID: 20632
+PSVersion: 5.1.26100.10068
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.10068
+BuildVersion: 10.0.26100.10068
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== FLASH P3 (NCM gadget + initrd) -> DISK 2 ===
+Disk 2: Generic- xD/SD/M.S. | size 119.4 GB | bus USB
+Source: 3946823168 bytes (3.68 GiB)
+Seek confirmed at 348127232
+Flashing: 3.8% (144 MB / 3764 MB at 28.5 MB/s)
+Flashing: 7.7% (288 MB / 3764 MB at 28.6 MB/s)
+Flashing: 11.7% (440 MB / 3764 MB at 28.8 MB/s)
+Flashing: 15.7% (592 MB / 3764 MB at 28.9 MB/s)
+Flashing: 19.8% (744 MB / 3764 MB at 28.9 MB/s)
+Flashing: 23.8% (896 MB / 3764 MB at 29 MB/s)
+Flashing: 27.8% (1048 MB / 3764 MB at 29 MB/s)
+Flashing: 31.9% (1200 MB / 3764 MB at 29 MB/s)
+Flashing: 35.9% (1352 MB / 3764 MB at 29 MB/s)
+Flashing: 40% (1504 MB / 3764 MB at 29 MB/s)
+Flashing: 44% (1656 MB / 3764 MB at 29 MB/s)
+Flashing: 48% (1808 MB / 3764 MB at 29 MB/s)
+Flashing: 51.9% (1952 MB / 3764 MB at 29 MB/s)
+Flashing: 55.7% (2096 MB / 3764 MB at 29 MB/s)
+Flashing: 59.5% (2240 MB / 3764 MB at 28.9 MB/s)
+Flashing: 63.3% (2384 MB / 3764 MB at 28.9 MB/s)
+Flashing: 67.2% (2528 MB / 3764 MB at 28.9 MB/s)
+Flashing: 71.2% (2680 MB / 3764 MB at 28.9 MB/s)
+Flashing: 75.2% (2832 MB / 3764 MB at 28.9 MB/s)
+Flashing: 79.3% (2984 MB / 3764 MB at 28.9 MB/s)
+Flashing: 83.1% (3128 MB / 3764 MB at 28.9 MB/s)
+Flashing: 86.9% (3272 MB / 3764 MB at 28.8 MB/s)
+Flashing: 90.8% (3416 MB / 3764 MB at 28.8 MB/s)
+Flashing: 94.6% (3560 MB / 3764 MB at 28.8 MB/s)
+Flashing: 98.4% (3704 MB / 3764 MB at 28.8 MB/s)
+Write done in 130.7 s, 3946823168 bytes
+Readback head match: True (bytes read: 4096)
+**********************
+Windows PowerShell transcript end
+End time: 20261121150150
+**********************

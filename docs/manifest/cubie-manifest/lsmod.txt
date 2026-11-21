@@ -1,0 +1,22 @@
+Module                  Size  Used by
+algif_hash             20480  1
+algif_skcipher         20480  1
+af_alg                 28672  6 algif_hash,algif_skcipher
+bnep                   24576  2
+aic8800_btlpm          16384  0
+lz4                    16384  8
+lz4_compress           28672  1 lz4
+zram                   28672  2
+zsmalloc               32768  1 zram
+binfmt_misc            24576  1
+deinterlace            90112  0
+spi_sunxi_ng           86016  0
+sunxi_ve               45056  0
+sun55iw3_devfreq       24576  0
+aic8800_fdrv          458752  0
+aic8800_bsp            86016  2 aic8800_btlpm,aic8800_fdrv
+loop                   40960  0
+dm_mod                114688  0
+ip_tables              32768  0
+autofs4                36864  2
+maxio                  20480  2

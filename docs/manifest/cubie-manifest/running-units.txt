@@ -1,0 +1,16 @@
+  aic8800-bt.service          loaded active running AIC8800D80 Bluetooth (HCI over ttyAS1)
+  bluetooth.service           loaded active running Bluetooth service
+  cron.service                loaded active running Regular background program processing daemon
+  dbus.service                loaded active running D-Bus System Message Bus
+  getty@tty1.service          loaded active running Getty on tty1
+  NetworkManager.service      loaded active running Network Manager
+  serial-getty@ttyAS0.service loaded active running Serial Getty on ttyAS0
+  serial-getty@ttyGS0.service loaded active running Serial Getty on ttyGS0
+  ssh.service                 loaded active running OpenBSD Secure Shell server
+  systemd-journald.service    loaded active running Journal Service
+  systemd-logind.service      loaded active running User Login Management
+  systemd-networkd.service    loaded active running Network Configuration
+  systemd-timesyncd.service   loaded active running Network Time Synchronization
+  systemd-udevd.service       loaded active running Rule-based Manager for Device Events and Files
+  user@1000.service           loaded active running User Manager for UID 1000
+  wpa_supplicant.service      loaded active running WPA supplicant

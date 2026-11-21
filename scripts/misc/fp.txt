@@ -1,0 +1,591 @@
+﻿### policy
+"One footprint per reference. No dual footprints, no coincident SMD/THT pad stacks, no option-pad sets. Where a part exists in both a through-hole and an SMD package, the through-hole socketed variant is the only one placed: U1 MCP6002 PDIP-8, U3 6N137 DIP-8, U5 TL431 TO-92, Q1 2N2222 TO-92, U4 LM35 TO-92, U11 DS18B20 TO-92, D1 1N4744 DO-41. Everything else is its single SMD package. All passives 0805 except the four forced exceptions."
+
+### exceptions
+[
+ {
+  "ref": "L3",
+  "pkg": "8x8x4 mm shielded SMD (not 0805)",
+  "why": "22 uH at 1.2 MHz with Isat >= 4.6 A does not exist in 0805; 0805 22 uH parts are 50 mA class with tens of ohms DCR."
+ },
+ {
+  "ref": "L1,L2",
+  "pkg": "4x4x2 mm shielded SMD (not 0805)",
+  "why": "100 uH 0805 has hundreds of ohms DCR; at 3 mA it would drop 0.6 V of the 18 V rail."
+ },
+ {
+  "ref": "C1,C3",
+  "pkg": "8x10 mm SMD polymer aluminium (not 0805)",
+  "why": "100 uF at 25 V is not an 0805 value at any capacitance retention."
+ }
+]
+
+### table
+[
+ {
+  "ref": "U1",
+  "part": "MCP6002-E/P",
+  "pkg": "Package_DIP:DIP-8_W7.62mm",
+  "mount": "THT in 8-pin machined socket",
+  "pins": 8,
+  "pin_order": "1 OUTA, 2 INA-, 3 INA+, 4 VSS, 5 INB+, 6 INB-, 7 OUTB, 8 VDD (Microchip DS20001733 PDIP-8). Pitch 2.54 mm, rows 7.62 mm.",
+  "note": "Socket is mandatory: -E/P vs -I/P grade swapping is a research requirement."
+ },
+ {
+  "ref": "U3",
+  "part": "6N137",
+  "pkg": "Package_DIP:DIP-8_W7.62mm",
+  "mount": "THT in 8-pin machined socket",
+  "pins": 8,
+  "pin_order": "1 NC, 2 ANODE, 3 CATHODE, 4 NC, 5 GND, 6 VO, 7 VE, 8 VCC (Vishay 6N137 DIP-8). Pitch 2.54 mm, rows 7.62 mm.",
+  "note": "Pin order identical to the SOIC-8 variant, so a SOIC-on-adapter also drops in."
+ },
+ {
+  "ref": "U5",
+  "part": "TL431ILPR",
+  "pkg": "TO-92 inline (TO-226AA), 3 leads",
+  "mount": "THT in 1x3 machined socket, 2.54 mm",
+  "pins": 3,
+  "pin_order": "1 REF, 2 ANODE, 3 CATHODE (TI SLVS005 LP package). Native lead pitch 1.27 mm, outer span 2.54 mm.",
+  "note": "Same order as the SOT-23 DBZ variant, so the netlist is unchanged by the package."
+ },
+ {
+  "ref": "Q1",
+  "part": "2N2222 / 2N2222A",
+  "pkg": "TO-92 inline (TO-226AA), 3 leads",
+  "mount": "THT in 1x3 machined socket, 2.54 mm",
+  "pins": 3,
+  "pin_order": "1 EMITTER, 2 BASE, 3 COLLECTOR (EBC, flat face toward you, leads down). Native lead pitch 1.27 mm, outer span 2.54 mm.",
+  "note": "EBC is the OPPOSITE of the SOT-23 MMBT2222A (BEC). The symbol must be Q_NPN_EBC; a Q_NPN_BEC symbol swaps base and emitter and the sink stops regulating. 2N3904 and 2N2222A share EBC, so both drop into this socket."
+ },
+ {
+  "ref": "U4",
+  "part": "LM35DZ",
+  "pkg": "TO-92 inline (TO-226AA), 3 leads",
+  "mount": "THT in 1x3 machined socket, 2.54 mm",
+  "pins": 3,
+  "pin_order": "1 +VS, 2 VOUT, 3 GND (TI LM35 datasheet LP package). Native lead pitch 1.27 mm, outer span 2.54 mm.",
+  "note": "NOT pin-compatible with the DS18B20 TO-92 socket next to it - see hazards.to92_socket_keying."
+ },
+ {
+  "ref": "U11",
+  "part": "DS18B20+",
+  "pkg": "TO-92 inline (TO-226AA), 3 leads",
+  "mount": "THT in 1x3 machined socket, 2.54 mm",
+  "pins": 3,
+  "pin_order": "1 GND, 2 DQ, 3 VDD (Maxim DS18B20 datasheet TO-92). Native lead pitch 1.27 mm, outer span 2.54 mm.",
+  "note": "Reverse of the LM35 order. Key or label this socket differently."
+ },
+ {
+  "ref": "D1A to D1D",
+  "part": "1N4744 (15 V, 1 W)",
+  "pkg": "DO-41 axial glass",
+  "mount": "THT in the 8-pin DIP-8 machined socket bank",
+  "pins": 2,
+  "pin_order": "Pin 1 = CATHODE (banded end), pin 2 = ANODE. Leads formed to 7.62 mm so the body spans the socket rows.",
+  "note": "Four diodes share one 8-pin socket: D1A across pins 1-8, D1B 2-7, D1C 3-6, D1D 4-5. Cathodes on the 1,2,3,4 side."
+ },
+ {
+  "ref": "U2",
+  "part": "INA219",
+  "pkg": "SOT-23-8 (TI DCN)",
+  "mount": "SMD, no socket",
+  "pins": 8,
+  "pin_order": "1 IN+, 2 IN-, 3 GND, 4 VS, 5 SCL, 6 SDA, 7 A0, 8 A1",
+  "note": "-"
+ },
+ {
+  "ref": "BOOST1",
+  "part": "MT3608",
+  "pkg": "SOT-23-6",
+  "mount": "SMD, no socket",
+  "pins": 6,
+  "pin_order": "1 SW, 2 GND, 3 FB, 4 EN, 5 VIN, 6 NC (MT3608.ref.md p.2)",
+  "note": "Pin 6 is NC and is the only pin on a no-connect."
+ },
+ {
+  "ref": "LDO1",
+  "part": "AMS1117-3.3",
+  "pkg": "SOT-223",
+  "mount": "SMD, no socket",
+  "pins": 4,
+  "pin_order": "1 GND, 2 VOUT, 3 VIN, tab = VOUT",
+  "note": "Tab must be soldered; it is the main heat path and carries VOUT."
+ },
+ {
+  "ref": "U7",
+  "part": "Si5351A-B-GT",
+  "pkg": "MSOP-10",
+  "mount": "SMD, no socket",
+  "pins": 10,
+  "pin_order": "1 VDD, 2 XA, 3 XB, 4 SCL, 5 SDA, 6 CLK2, 7 VDDO, 8 GND, 9 CLK1, 10 CLK0 (Si5351A-B-GT.ref.md p.25)",
+  "note": "VDD and VDDO both on 3V3_D, so the VDDO-before-VDD rule is satisfied."
+ },
+ {
+  "ref": "U8",
+  "part": "TMP117",
+  "pkg": "WSON-6 (TI DRV)",
+  "mount": "SMD, no socket",
+  "pins": 6,
+  "pin_order": "1 V+, 2 GND, 3 ALERT, 4 SDA, 5 SCL, 6 ADD0",
+  "note": "Exposed thermal pad must be soldered - see hazards.wson_thermal_pad."
+ },
+ {
+  "ref": "U9",
+  "part": "MCP9808",
+  "pkg": "MSOP-8",
+  "mount": "SMD, no socket",
+  "pins": 8,
+  "pin_order": "1 VDD, 2 SDA, 3 SCL, 4 ALERT, 5 GND, 6 A2, 7 A1, 8 A0",
+  "note": "-"
+ },
+ {
+  "ref": "U10",
+  "part": "MAX31865",
+  "pkg": "TSSOP-20, 0.65 mm pitch",
+  "mount": "SMD, no socket",
+  "pins": 20,
+  "pin_order": "1 ~DRDY, 2 DVDD, 3 VDD, 4 BIAS, 5 REFIN+, 6 REFIN-, 7 ISENSOR, 8 FORCE+, 9 FORCE2, 10 RTDIN+, 11 RTDIN-, 12 FORCE-, 13 GND2, 14 SDI, 15 SCLK, 16 ~CS, 17 SDO, 18 DGND, 19 GND1, 20 NC (MAX31865AAP.ref.md p.2)",
+  "note": "TSSOP-20 family (SSOP-20). Single source, 351 pieces in stock: buy spares."
+ },
+ {
+  "ref": "U6",
+  "part": "MCP6002",
+  "pkg": "SOIC-8",
+  "mount": "SMD, no socket",
+  "pins": 8,
+  "pin_order": "same as U1",
+  "note": "Only used because the reference buffer needs a fourth op-amp."
+ },
+ {
+  "ref": "Q2",
+  "part": "IRLML6344",
+  "pkg": "SOT-23",
+  "mount": "SMD, no socket",
+  "pins": 3,
+  "pin_order": "1 G, 2 S, 3 D",
+  "note": "-"
+ },
+ {
+  "ref": "D3",
+  "part": "SS34",
+  "pkg": "SMA / DO-214AC",
+  "mount": "SMD",
+  "pins": 2,
+  "pin_order": "1 ANODE, 2 CATHODE (banded)",
+  "note": "-"
+ },
+ {
+  "ref": "Y1",
+  "part": "25 MHz crystal",
+  "pkg": "3225 2-pad",
+  "mount": "SMD",
+  "pins": 2,
+  "pin_order": "1/2 crystal (non-polar)",
+  "note": "CL 8 pF, ESR <= 60 ohm."
+ },
+ {
+  "ref": "J1",
+  "part": "SMA edge-mount",
+  "pkg": "SMD edge",
+  "mount": "SMD",
+  "pins": 2,
+  "pin_order": "1 center, 2 shield",
+  "note": "Shield to Star AGND."
+ },
+ {
+  "ref": "J2",
+  "part": "DS18B20 probe",
+  "pkg": "JST-PH 1x3 SMD",
+  "mount": "SMD",
+  "pins": 3,
+  "pin_order": "1 VDD, 2 DQ, 3 GND (probe wire order)",
+  "note": "-"
+ },
+ {
+  "ref": "J3",
+  "part": "PT100 probe",
+  "pkg": "JST-PH 1x3 SMD",
+  "mount": "SMD",
+  "pins": 3,
+  "pin_order": "1 force, 2 sense+, 3 sense-",
+  "note": "-"
+ },
+ {
+  "ref": "HEAT1",
+  "part": "PTC heater",
+  "pkg": "JST-PH 1x2 SMD (2 A)",
+  "mount": "SMD",
+  "pins": 2,
+  "pin_order": "1 +12 V, 2 switched return",
+  "note": "AWG20 lea
+
+### socket_bom
+[
+ {
+  "ref": "XS1",
+  "pkg": "DIP-8 machined socket, 7.62 mm rows",
+  "qty": 1,
+  "for": "U1"
+ },
+ {
+  "ref": "XS2",
+  "pkg": "DIP-8 machined socket, 7.62 mm rows",
+  "qty": 1,
+  "for": "U3"
+ },
+ {
+  "ref": "XS3",
+  "pkg": "DIP-8 machined socket, 7.62 mm rows",
+  "qty": 1,
+  "for": "D1A to D1D bank"
+ },
+ {
+  "ref": "XS4",
+  "pkg": "1x3 machined socket, 2.54 mm",
+  "qty": 1,
+  "for": "U5"
+ },
+ {
+  "ref": "XS5",
+  "pkg": "1x3 machined socket, 2.54 mm",
+  "qty": 1,
+  "for": "Q1"
+ },
+ {
+  "ref": "XS6",
+  "pkg": "1x3 machined socket, 2.54 mm",
+  "qty": 1,
+  "for": "U4"
+ },
+ {
+  "ref": "XS7",
+  "pkg": "1x3 machined socket, 2.54 mm",
+  "qty": 1,
+  "for": "U11"
+ }
+]
+
+### test_points
+[
+ {
+  "ref": "TP1",
+  "net": "NET_BATT_5V"
+ },
+ {
+  "ref": "TP2",
+  "net": "NET_BOOST_IN"
+ },
+ {
+  "ref": "TP3",
+  "net": "NET_HV_RAW_18V"
+ },
+ {
+  "ref": "TP4",
+  "net": "NET_HV_MID"
+ },
+ {
+  "ref": "TP5",
+  "net": "NET_HV_CLEAN_18V"
+ },
+ {
+  "ref": "TP6",
+  "net": "NET_ZENER_CATHODE"
+ },
+ {
+  "ref": "TP7",
+  "net": "NET_ZENER_ANODE"
+ },
+ {
+  "ref": "TP8",
+  "net": "NET_TL431_2V5"
+ },
+ {
+  "ref": "TP9",
+  "net": "NET_VDDA_3V3"
+ },
+ {
+  "ref": "TP10",
+  "net": "NET_VREF_1V25"
+ },
+ {
+  "ref": "TP11",
+  "net": "GND"
+ },
+ {
+  "ref": "TP12",
+  "net": "Star AGND"
+ }
+]
+
+### decoupling
+[
+ {
+  "rail": "NET_VDDA_3V3",
+  "pin": "U1.8",
+  "cap": "C4 100 nF",
+  "bulk": "C15 10 uF"
+ },
+ {
+  "rail": "NET_VDDA_3V3",
+  "pin": "U6.8",
+  "cap": "C31 100 nF",
+  "bulk": "C15 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U2.4",
+  "cap": "C12 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "NET_BOOST_IN",
+  "pin": "BOOST1.5",
+  "cap": "C20 100 nF",
+  "bulk": "C16 10 uF"
+ },
+ {
+  "rail": "NET_BOOST_IN",
+  "pin": "LDO1.3",
+  "cap": "C21 10 uF",
+  "bulk": "C16 10 uF"
+ },
+ {
+  "rail": "NET_VDDA_3V3",
+  "pin": "LDO1.2",
+  "cap": "C22 22 uF + R33 0.33 ohm",
+  "bulk": "C22"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U7.VDD",
+  "cap": "C23 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U7.VDDO",
+  "cap": "C24 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U8.1",
+  "cap": "C26 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U9.1",
+  "cap": "C27 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U10.VDD",
+  "cap": "C28 100 nF",
+  "bulk": "C29 10 uF"
+ },
+ {
+  "rail": "3V3_D",
+  "pin": "U11.3",
+  "cap": "C30 100 nF",
+  "bulk": "C25 10 uF"
+ },
+ {
+  "rail": "NET_BOOST_IN",
+  "pin": "U4.1",
+  "cap": "C14 100 nF",
+  "bulk": "C16 10 uF"
+ },
+ {
+  "rail": "+5V_ISO",
+  "pin": "U3.8",
+  "cap": "C13 100 nF",
+  "bulk": "C33 1 uF"
+ },
+ {
+  "rail": "NET_HV_RAW_18V",
+  "pin": "D3.2",
+  "cap": "C6 100 nF",
+  "bulk": "C5 22 uF"
+ },
+ {
+  "rail": "NET_HV_MID",
+  "pin": "L1.2",
+  "cap": "C10 100 nF",
+  "bulk": "C1 100 uF"
+ },
+ {
+  "rail": "NET_HV_CLEAN_18V",
+  "pin": "L2.2",
+  "cap": "C11 100 nF",
+  "bulk": "C3 100 uF"
+ },
+ {
+  "rail": "NET_TL431_2V5",
+  "pin": "U5.3",
+  "cap": "none (shunt reference)",
+  "bulk": "none"
+ },
+ {
+  "rail": "NET_ZENER_CATHODE",
+  "pin": "D1A.1",
+  "cap": "C2 100 nF",
+  "bulk": "none"
+ }
+]
+
+### swap_variants
+[
+ {
+  "ref": "U1",
+  "footprint": "DIP-8 W7.62",
+  "variants": [
+   "MCP6002-E/P (-40..+125)",
+   "MCP6002-I/P (industrial)"
+  ],
+  "identical_pin_order": true,
+  "differs_in": "temperature grade and price only"
+ },
+ {
+  "ref": "U3",
+  "footprint": "DIP-8 W7.62",
+  "variants": [
+   "6N137 (Vishay, 10 MBd)",
+   "HCPL-2611 (Broadcom, 10 MBd)"
+  ],
+  "identical_pin_order": true,
+  "differs_in": "vendor and speed grade; both 8-pin DIP with 1/2/3/4 = NC/A/C/NC"
+ },
+ {
+  "ref": "U5",
+  "footprint": "TO-92",
+  "variants": [
+   "TL431ILP (1% ref)",
+   "TL431CLP (0.5% ref)"
+  ],
+  "identical_pin_order": true,
+  "differs_in": "initial reference tolerance"
+ },
+ {
+  "ref": "Q1",
+  "footprint": "TO-92",
+  "variants": [
+   "2N2222",
+   "2N2222A",
+   "2N3904"
+  ],
+  "identical_pin_order": true,
+  "differs_in": "hFE at 3.5 uA collector current, which sets the sink's beta error; all three are EBC"
+ },
+ {
+  "ref": "U4",
+  "footprint": "TO-92",
+  "variants": [
+   "LM35DZ",
+   "LM35DZ/NOPB"
+  ],
+  "identical_pin_order": true,
+  "differs_in": "packaging only, same die"
+ }
+]
+
+### zener_bank
+{
+ "socket": "One 8-pin machined DIP-8 socket, 7.62 mm rows, 2.54 mm pitch.",
+ "positions": [
+  "D1A",
+  "D1B",
+  "D1C",
+  "D1D"
+ ],
+ "socket_map": {
+  "D1A": {
+   "cathode": "socket pin 1",
+   "anode": "socket pin 8"
+  },
+  "D1B": {
+   "cathode": "socket pin 2",
+   "anode": "socket pin 7"
+  },
+  "D1C": {
+   "cathode": "socket pin 3",
+   "anode": "socket pin 6"
+  },
+  "D1D": {
+   "cathode": "socket pin 4",
+   "anode": "socket pin 5"
+  }
+ },
+ "lead_form": "DO-41 leads formed to 7.62 mm so the body spans the socket rows and the banded (cathode) end sits over pins 1-4.",
+ "links": {
+  "D1A": "R37",
+  "D1B": "R38",
+  "D1C": "R39",
+  "D1D": "R40"
+ },
+ "link_value": "0R 0805 1% jumper",
+ "wiring": "All four cathodes are tied on NET_ZENER_CATHODE (with C2 and R13). Each anode is its own net NET_LOT_A..NET_LOT_D, then through its 0R link to the shared NET_ZENER_ANODE noise node. Exactly one link is fitted.",
+ "orientation": "Cathode toward the 18 V rail through R13, anode toward the Q1 sink - identical to the original through-hole design, so noise polarity and AC-coupling direction are unchanged.",
+ "rule": "EXACTLY ONE of R37/R38/R39/R40 is fitted at any time. The other three stay open.",
+ "lot_assignment": "Lot 1 in D1A, lot 2 in D1B, lot 3 in D1C, lot 4 in D1D, recorded per run in the lab notebook. Any lot may occupy any position, but the mapping must be recorded because the position is what the firmware logs.",
+ "two_links_fitted": "FAULT. Two fitted links parallel two different zener lots on the same microamp bias. Zeners in parallel are a voltage clamp, not a current divider: the lower-Vz device takes essentially all of the 3.5 uA and the other sits off, so the run silently reports one lot while the operator believes two are being compared. If the lots are within ~100 mV they share in proportion to their dynamic resistance instead, producing an unlabelled mixture of exactly the quantity under study. Either way the result is invalid and must be discarded, not interpreted."
+}
+
+### EXTRA PARTS
+{"part": "Socket", "value": "DIP-8 machined, 7.62 mm rows", "pkg": "THT", "tol": "-", "qty": 3, "purpose": "XS1, XS2, XS3 zener bank"}
+{"part": "Socket", "value": "1x3 machined, 2.54 mm", "pkg": "THT", "tol": "-", "qty": 4, "purpose": "XS4, XS5, XS6, XS7"}
+{"part": "Header", "value": "2.54 mm female, 2x19 + 1x19", "pkg": "THT", "tol": "-", "qty": 1, "purpose": "Nucleo-G491RE carrier"}
+{"part": "R", "value": "0.39 ohm", "pkg": "0805", "tol": "1%", "qty": 1, "purpose": "INA219 shunt R28, 0-102 mA at PGA/1"}
+{"part": "R", "value": "10 ohm", "pkg": "0805", "tol": "0.1%", "qty": 2, "purpose": "INA219 Kelvin input filter R29/R30, matched"}
+{"part": "R", "value": "294 k", "pkg": "0805", "tol": "1%", "qty": 1, "purpose": "R24, MT3608 feedback top, single resistor 294 k between NET_HV_RAW_18V and NET_BOOST_FB. Pairs with R25 = 9.76 k for 18.07 V."}
+{"part": "R", "value": "10.2 k", "pkg": "0805", "tol": "1%", "qty": 1, "purpose": "R25, MT3608 feedback bottom. 10.2 k with R24 = 294 k gives 17.89 V, the closest E96 value to an 18.00 V target.", "lcsc": "C17402"}
+{"part": "R", "value": "100 k", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "MT3608 EN pull-up R26"}
+{"part": "R", "value": "0.33 ohm", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "LDO output ESR R33 - the AMS1117 needs 0.1-10 ohm in series with its output cap"}
+{"part": "R", "value": "2.2 k", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "I2C1 pull-ups R14/R15, the only pair on the bus"}
+{"part": "R", "value": "4.7 k", "pkg": "0805", "tol": "5%", "qty": 3, "purpose": "1-Wire pull-up R18, opto VO pull-up R17, MCP9808 ALERT pull-up R35"}
+{"part": "R", "value": "100 k", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "Q1 emitter R1 (sets 3.5 uA) and AFE input bias R7"}
+{"part": "R", "value": "10 k", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "TL431 divider R4/R5, matched pair"}
+{"part": "R", "value": "390 ohm", "pkg": "0805", "tol": "1%", "qty": 1, "purpose": "TL431 2.06 mA cathode bias R3"}
+{"part": "R", "value": "10 k", "pkg": "0805", "tol": "5%", "qty": 2, "purpose": "Q1 base stopper R2, heater gate pull-down R20"}
+{"part": "R", "value": "100 ohm", "pkg": "0805", "tol": "5%", "qty": 4, "purpose": "VREF series R6, ADC series R12, LM35 series R41, RF series R23"}
+{"part": "R", "value": "46.4 k", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "AFE feedback R8/R10, 10.08x per stage"}
+{"part": "R", "value": "5.11 k", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "AFE gain-set R9/R11"}
+{"part": "R", "value": "180 ohm", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "6N137 LED current R16, 10.6 mA"}
+{"part": "R", "value": "1 k", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "Zener cathode isolator R13"}
+{"part": "R", "value": "10 k", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "Si5351A attenuator series R21"}
+{"part": "R", "value": "51.1 ohm", "pkg": "0805", "tol": "1%", "qty": 2, "purpose": "Si5351A attenuator shunt R22 (one spare for trimming)"}
+{"part": "R", "value": "430 ohm", "pkg": "0805", "tol": "0.1%, 25 ppm", "qty": 1, "purpose": "MAX31865 RREF R31 - sets the RTD conversion gain"}
+{"part": "R", "value": "0R", "pkg": "0805", "tol": "jumper", "qty": 6, "purpose": "4 zener lot links R37..D, MAX31865 3-wire strap R32, GND/Star AGND net tie R36"}
+{"part": "C", "value": "100 nF", "pkg": "0805", "tol": "10% X7R 50 V", "qty": 16, "purpose": "C2 C4 C6 C10 C11 C12 C13 C14 C20 C23 C24 C26 C27 C28 C30 C31 - one per IC supply pin plus HF node caps"}
+{"part": "C", "value": "10 nF", "pkg": "0805", "tol": "10% X7R 50 V", "qty": 2, "purpose": "INA219 common-mode C35/C36"}
+{"part": "C", "value": "100 nF", "pkg": "0805", "tol": "10% X7R 50 V", "qty": 3, "purpose": "MAX31865 filters C40, C42 plus one spare"}
+{"part": "C", "value": "10 pF", "pkg": "0805", "tol": "5% C0G 50 V", "qty": 4, "purpose": "C8/C17 AFE feedback, C9 C_INJ, one spare"}
+{"part": "C", "value": "100 pF", "pkg": "0805", "tol": "5% C0G 50 V", "qty": 2, "purpose": "C18 attenuator edge filter, C38 boost feedforward"}
+{"part": "C", "value": "1 uF", "pkg": "0805", "tol": "10% X7R 16 V", "qty": 2, "purpose": "C19 VREF, C33 isolated 5 V bulk"}
+{"part": "C", "value": "10 uF", "pkg": "0805", "tol": "10% X7R 16 V", "qty": 7, "purpose": "C15 VDDA bulk, C16 boost input, C21 LDO input, C25 3V3_D bulk, C29 MAX31865 bulk, C39 delay, one spare"}
+{"part": "C", "value": "22 uF", "pkg": "1210", "tol": "10% X7R 25 V", "qty": 3, "purpose": "C5 boost output bulk (2 fitted), C22 LDO output (1)"}
+{"part": "C", "value": "100 uF", "pkg": "8x10 mm SMD polymer 25 V", "tol": "20%", "qty": 2, "purpose": "C1 HV_MID, C3 HV_CLEAN pi filter bulk"}
+{"part": "C", "value": "22 nF", "pkg": "0805", "tol": "5%", "qty": 1, "purpose": "C7 AC coupling on the avalanche node. 0805 C0G 22 nF 50 V 5 percent. Insulation resistance 45.45 GOhm at 25 C from the C0G column of the type table, giving 0.37 nA at 16.64 V against a 1 nA budget. Hot case 3.70 nA at 125 C.", "mpn": "GRM21B5C1H223JA01L", "lcsc": "C77069"}
+{"part": "L", "value": "22 uH", "pkg": "8x8x4 mm shielded", "tol": "20%", "qty": 1, "purpose": "L3, Isat >= 4.6 A for the 4 A startup surge"}
+{"part": "L", "value": "100 uH", "pkg": "4x4x2 mm shielded", "tol": "20%", "qty": 2, "purpose": "L1/L2 pi filter, DCR <= 2 ohm"}
+{"part": "D", "value": "SS34", "pkg": "SMA / DO-214AC", "tol": "-", "qty": 1, "purpose": "D3 40 V 3 A Schottky"}
+{"part": "D", "value": "1N4744 15 V 1 W", "pkg": "DO-41", "tol": "5% Vz", "qty": 6, "purpose": "D1A to D1D four lot positions plus 2 spares"}
+{"part": "Y", "value": "25 MHz", "pkg": "3225 2-pad", "tol": "20 ppm", "qty": 1, "purpose": "Si5351A reference, CL 8 pF, ESR <= 60 ohm"}
+{"part": "J", "value": "SMA edge mount", "pkg": "SMD", "tol": "-", "qty": 1, "purpose": "J1 RF injection port"}
+{"part": "J", "value": "JST-PH 1x3", "pkg": "SMD", "tol": "-", "qty": 3, "purpose": "J2 DS18B20, J3 PT100, one spare"}
+{"part": "J", "value": "JST-PH 1x2 (2 A)", "pkg": "SMD", "tol": "-", "qty": 1, "purpose": "HEAT1 heater"}
+{"part": "J", "value": "1x3 2.54 mm SMD pads", "pkg": "SMD", "tol": "-", "qty": 2, "purpose": "J4 SPI1 capture, J5 isolated side"}
+{"part": "TP", "value": "test point", "pkg": "1.5 mm SMD pad / 2 mm loop", "tol": "-", "qty": 12, "purpose": "TP1 to TP12 on every rail plus both grounds"}
+{"part": "F", "value": "500 mA fuse", "pkg": "1206 SMD", "tol": "-", "qty": 1, "purpose": "NET_BATT_5V protection"}
+{"part": "F", "value": "2 A fuse", "pkg": "1206 SMD", "tol": "-", "qty": 1, "purpose": "12 V heater protection"}
+{"part": "Connector", "value": "1x19 female header, 2.54 mm", "pkg": "THT", "tol": "-", "qty": 2, "purpose": "JC1 and JC2, the two 1x19 sockets carrying the Nucleo morpho CN7 odd and even rows. Carrier for every signal this board consumes.", "nets": ["JC1, JC2"]}
+{"part": "Connector", "value": "1x10 female header, 2.54 mm", "pkg": "THT", "tol": "-", "qty": 1, "purpose": "JA1, Uno R3 digital header. Mechanical support only; no net is assigned to an Arduino-position pin.", "nets": ["none - mechanical"]}
+{"part": "Connector", "value": "1x8 female header, 2.54 mm", "pkg": "THT", "tol": "-", "qty": 2, "purpose": "JA2, Uno R3 digital header. Mechanical support only.  Also: JA4, Uno R3 analog header. Mechanical support only.", "nets": ["none - mechanical", "none - mechanical"]}
+{"part": "Connector", "value": "1x6 female header, 2.54 mm", "pkg": "THT", "tol": "-", "qty": 1, "purpose": "JA3, Uno R3 power header. Mechanical support only.", "nets": ["none - mechanical"]}
+{"part": "Test pad", "value": "1.5 mm SMD pad", "pkg": "0805 land", "tol": "-", "qty": 16, "purpose": "TP13 to TP28, one per consumed MCU signal: PA0 PA1 PA2 PA4 PA5 PA7 PA8 PB0 PB1 PB4 PB8 PB9 PB12 PB13 PB14 PB15. Lets a probe reach the net without landing on a header pin.", "nets": ["one per signal net"]}
+{"part": "D", "value": "SS14", "pkg": "SMA", "tol": "-", "qty": 1, "purpose": "D2 reverse-polarity protection, series between NET_VBAT_FUSED and NET_BATT_5V. A 0.25 V drop at 4 mA is irrelevant to a boost with 2 V of input headroom.", "nets": ["NET_VBAT_FUSED", "NET_BATT_5V"]}
+### MISSING PARTS
+{"ref": "JC1 to JC4", "part": "Nucleo-G491RE carrier headers (morpho rows)", "pins_used": ["PA0", "PA1", "PA2", "PA4", "PA5", "PA7", "PA8", "PB0", "PB1", "PB4", "PB8", "PB9", "PB12", "PB13", "PB14", "PB15", "3V3", "GND"], "note": "The STM32G491RE silicon is not on this design; the Nucleo stays a module and only its headers appear on this PCB. Split into four 1x19 sockets: JC1 and JC3 carry the odd morpho pads, JC2 and JC4 the even pads. Nine signals and the power pins now have verified physical pads from UM2505 (PA4 CN7.32, PB0 CN7.34, 3V3 CN7.16, 5V CN7.18, PB8 CN10.3, PB9 CN10.5, PA5 CN10.11, PA7 CN10.15, PB13 CN10.30, PB14 CN10.28, PB15 CN10.26, plus six GND pads). Seven signals have no pad in that reference and remain symbolic."}
+{"ref": "JA1 to JA4", "part": "Uno R3 Arduino headers on the Nucleo", "pins_used": [], "note": "Mechanical only on this board. Assigning no signal to an Arduino-position pin removes a whole class of carrier mapping error."}

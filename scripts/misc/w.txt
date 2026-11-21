@@ -1,0 +1,164 @@
+﻿GND :: LDO1.1, BOOST1.2, C16.2, C20.2, C21.2, C23.2, C24.2, C25.2, C26.2, C27.2, C28.2, C29.2, C30.2, C39.2, R25.2, U2.7, U2.8, U8.2, U8.6, U9.5, U9.6, U9.7, U9.8, U10.18, U11.1, U3.3, J2.3, J4.3, R36.1, TP11.1, JC1.10, JC2.4, JC2.10, JC2.11, JC3.5, JC4.10, U7.8, U10.13, U10.19, J6.2, C12.2, C43.2, C44.2
+Star AGND :: U2.3, C1.2, C2.2, C3.2, C4.2, C5.2, C6.2, C10.2, C11.2, C14.2, C15.2, C19.2, C31.2, C35.2, C37.1, U5.2, U1.4, U6.4, U4.3, R1.2, R5.2, R22.2, C18.2, J1.2, R36.2, TP12.1, C22.2, C36.2, C41.2, U6.5
+GND_ISO :: U3.5, J5.2, C13.2, C33.2
++5V_ISO :: U3.8, U3.7, R17.2, J5.3, C13.1, C33.1
+NET_VDDA_3V3 :: R33.2, C22.1, C4.1, C15.1, U1.8, U6.8, R3.1, TP9.1, C31.1
+3V3_D :: JC2.8, J2.1, U2.4, U7.1, U7.7, U8.1, U9.1, U10.3, U11.3, R14.2, R15.2, R18.2, R35.2, C12.1, C23.1, C24.1, C25.1, C26.1, C27.1, C28.1, C29.1, C30.1, U10.2
+NET_BOOST_IN :: R28.2, R30.1, BOOST1.5, C16.1, C20.1, C21.1, U4.1, TP2.1, C14.1, L3.1, R26.1, LDO1.3, D4.1
+NET_ZENER_CATHODE :: R13.2, C2.1, D1A.1, D1B.1, D1C.1, D1D.1, TP6.1
+NET_LOT_A :: D1A.2, R37.1
+NET_LOT_B :: D1B.2, R38.1
+NET_LOT_C :: D1C.2, R39.1
+NET_LOT_D :: D1D.2, R40.1
+NET_ZENER_ANODE :: R37.2, R38.2, R39.2, R40.2, Q1.3, C7.1, C9.1, TP7.1
+NET_AFE_IN :: C7.2, R7.1, U1.3
+NET_AMP1_OUT :: U1.1, R8.1, C8.1, U1.5
+NET_AMP1_INV :: U1.2, R8.2, R9.1, C8.2
+NET_AMP2_OUT :: U1.7, R10.1, C17.1, R12.1
+NET_AMP2_INV :: U1.6, R10.2, R11.1, C17.2
+NET_ZENER_SINK :: R1.1, Q1.1
+NET_Q1_BASE :: R2.2, Q1.2
+NET_TL431_2V5 :: U5.3, U5.1, R3.2, R4.1, TP8.1
+ONE_WIRE :: J2.2, R18.1, JC3.12, U11.2, TP19.1
+NET_OPTO_LED_A :: R16.2, U3.2
+FAIL_PIN_ISO :: U3.6, R17.1, J5.1
+NET_LM35_OUT :: U4.2, R41.1
+
+NETS TOTAL 71
+BLOCK ORDER ["1. INPUT + TELEMETRY - establishes the 5 V source and the only ground reference point before anything can draw current.", "2. BOOST - the 18 V rail is derived from the 5 V node, so the feed must exist first.", "3. LDO + REFERENCE - the 3.3 V analog rail and the 1.2475 V reference both come off 5 V and are needed by every analog block that follows.", "4. NOISE_CORE - needs the clean 18 V rail and the reference; built early so its island and guard ring are fixed before neighbours crowd it.", "5. AFE - needs the noise node, the reference and 3.3 V, and must be placed while the noise node is still the newest copper.", "6. RF_INJECT - needs 3.3 V and the injection node only; independent of the AFE, so it can follow without rework.", "7. SENSORS - needs 3.3 V and 5 V; the heater is last within the block so it never gets placed near the analog islands.", "8. ISOLATION_CAPTURE - needs only 3.3 V and the MCU signals, so it is placed after the MCU direction of travel is known.", "9. MCU - the carrier goes last on the right edge because every signal stub terminates there and the page must already be full enough to judge the run lengths.", "10. MECH_OPTIONS - sockets and test points fill the outer edge last, next to the parts they serve."]
+BLOCKS_NOTE "This describes placement regions on the single root sheet kanre-m1.kicad_sch, not files. There are no child sheets and nothing crosses a file boundary; every net is an ordinary local net on one page. Page size A1."
+{
+ "name": "RF_INJECT",
+ "purpose": "Si5351A aggressor, 25 MHz crystal and load caps, output attenuator, the 10 pF injection capacitor and the SMA launch.",
+ "components": [
+  "U7",
+  "Y1",
+  "C43",
+  "C44",
+  "C9",
+  "C18",
+  "R21",
+  "R22",
+  "R23",
+  "J1",
+  "C23",
+  "C24",
+  "C25"
+ ],
+ "placement": "Top-centre, above the AFE, with the SMA at the top edge and the crystal loop tight against the IC.",
+ "keep_away_from": [
+  "BOOST",
+  "heater"
+ ]
+}
+{
+ "name": "MCU",
+ "purpose": "Nucleo-G491RE carrier headers (four 1x19 sockets plus the four Arduino headers), sixteen signal test pads and the I2C pull-up pair.",
+ "components": [
+  "JC1",
+  "JC2",
+  "JC3",
+  "JC4",
+  "JA1",
+  "JA2",
+  "JA3",
+  "JA4",
+  "TP13",
+  "TP14",
+  "TP15",
+  "TP16",
+  "TP17",
+  "TP18",
+  "TP19",
+  "TP20",
+  "TP21",
+  "TP22",
+  "TP23",
+  "TP24",
+  "TP25",
+  "TP26",
+  "TP27",
+  "TP28",
+  "R14",
+  "R15"
+ ],
+ "placement": "Right edge of the sheet, headers vertical, all signal stubs pointing left into the page.",
+ "keep_away_from": [
+  "NOISE_CORE",
+  "AFE input node"
+ ]
+}
+{
+ "name": "SENSORS",
+ "purpose": "DS18B20, TMP117, MCP9808, MAX31865 with the PT100 and its reference resistor, LM35, and the PTC heater drive.",
+ "components": [
+  "U11",
+  "R18",
+  "C30",
+  "U8",
+  "C26",
+  "U9",
+  "R35",
+  "C27",
+  "U10",
+  "R31",
+  "R32",
+  "C40",
+  "C41",
+  "C42",
+  "J2",
+  "J3",
+  "U4",
+  "R41",
+  "HEAT1",
+  "J7",
+  "Q2",
+  "R19",
+  "R20",
+  "C28",
+  "C29",
+  "C14",
+  "C37"
+ ],
+ "placement": "Bottom-right, with the heater and Q2 pushed to the far bottom edge, away from the analog blocks.",
+ "keep_away_from": [
+  "NOISE_CORE",
+  "AFE",
+  "LDO + REFERENCE"
+ ]
+}
+{
+ "name": "ISOLATION_CAPTURE",
+ "purpose": "6N137 with its LED resistor and output pull-up, the two logic-analyzer headers and the SPI1 tap.",
+ "components": [
+  "U3",
+  "R16",
+  "R17",
+  "C13",
+  "C33",
+  "J4",
+  "J5"
+ ],
+ "placement": "Top-right, above the MCU, so the SPI1 tap and FAIL_PIN runs are short.",
+ "keep_away_from": [
+  "NOISE_CORE",
+  "AFE"
+ ]
+}
+{
+ "name": "MECH_OPTIONS",
+ "purpose": "The seven machined sockets, the star-ground tie link and the ground test point.",
+ "components": [
+  "XS1",
+  "XS2",
+  "XS3",
+  "XS4",
+  "XS5",
+  "XS6",
+  "XS7",
+  "R36",
+  "TP11"
+ ],
+ "placement": "Outer edge, sockets next to the parts they carry; the star tie sits at the star point, not on the edge.",
+ "keep_away_from": []
+}

@@ -1,0 +1,8 @@
+﻿start 2026-11-20T12:13:38.3265552+05:30
+read 512 bytes @ 0
+mbr1 hex: 33 C0 8E D0 BC 00 7C 8E C0 8E D8 BE 00 7C BF 00
+wrote 512 bytes @ 128177929728
+readback first8: 
+persist=True
+persist_after_reenum=True
+done 2026-11-20T12:15:20.4852495+05:30

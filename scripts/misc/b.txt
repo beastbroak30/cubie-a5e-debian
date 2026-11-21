@@ -1,0 +1,85 @@
+﻿### NOT IN BOM
+  C37
+  C43
+  C44
+  J7
+  Q2
+  R17
+  R18
+  R19
+  R35
+  TP13
+  TP14
+  TP15
+  TP16
+  TP17
+  TP18
+  TP19
+  TP20
+  TP21
+  TP22
+  TP23
+  TP24
+  TP25
+  TP26
+  TP27
+  TP28
+
+### IN BOM
+  C13   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C14   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C18   100pF 50V C0G                CC0805JRNPO9BN101          0805             qty=2
+  C23   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C24   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C25   10uF 25V X5R                 CL21A106KAYNNNE            0805             qty=7
+  C26   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C27   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C28   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C29   10uF 25V X5R                 CL21A106KAYNNNE            0805             qty=7
+  C30   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C33   1uF 16V X7R                  CL21B105KOFNNNE            0805             qty=2
+  C40   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C41   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C42   100nF 50V X7R                CC0805KRX7R9BB104          0805             qty=19
+  C9    10pF 50V C0G                 0805CG100J500NT            0805             qty=4
+  HEAT1 JST-PH 2-pos                 S2B-PH-SM4-TB(LF)(SN)      SMD 2.0mm        qty=1
+  J1    SMA female edge launch       BWSMA-KE-P001              SMD edge mount   qty=1
+  J2    JST-PH 3-pos                 S3B-PH-SM4-TB(LF)(SN)      SMD 2.0mm        qty=3
+  J3    JST-PH 3-pos                 S3B-PH-SM4-TB(LF)(SN)      SMD 2.0mm        qty=3
+  J4    1x3 2.54mm capture           PH254-01-03-Z-L11.5        pin header THT   qty=2
+  J5    1x3 2.54mm capture           PH254-01-03-Z-L11.5        pin header THT   qty=2
+  JA1   Female header 1x10           KH-2.54FH-1X10P-H8.5       THT 2.54mm       qty=1
+  JA2   Female header 1x8            2.54-1*8P                  THT 2.54mm       qty=2
+  JA3   Female header 1x8            2.54-1*8P                  THT 2.54mm       qty=2
+  JA4   Female header 1x6            2.54-1*6P                  THT 2.54mm       qty=1
+  JC1   Female header 1x19           2541FV-19P-B               THT 2.54mm       qty=4
+  JC2   Female header 1x19           2541FV-19P-B               THT 2.54mm       qty=4
+  JC3   Female header 1x19           2541FV-19P-B               THT 2.54mm       qty=4
+  JC4   Female header 1x19           2541FV-19P-B               THT 2.54mm       qty=4
+  R14   2.2k 1%                      0805W8F2201T5E             0805             qty=2
+  R15   2.2k 1%                      0805W8F2201T5E             0805             qty=2
+  R16   180R 5%                      FRC0805J181TS              0805             qty=1
+  R20   10k 1%                       0805W8F1002T5E             0805             qty=5
+  R21   10k 1%                       0805W8F1002T5E             0805             qty=5
+  R22   51.1R 1%                     FRC0805F51R1TS             0805             qty=2
+  R23   100R 5%                      0805W8J0101T5E             0805             qty=4
+  R31   430R 0.1% 25ppm              RT0805BRD07430RL           0805 thin film   qty=1
+  R32   0R jumper                    0805W8F0000T5E             0805             qty=6
+  R36   0R jumper                    0805W8F0000T5E             0805             qty=6
+  R41   100R 5%                      0805W8J0101T5E             0805             qty=4
+  TP11  Test point loop              5015                       SMD test point loop qty=12
+  U10   MAX31865 RTD ADC             MAX31865AAP+T              TSSOP-20         qty=1
+  U11   DS18B20 1-Wire thermometer   DS18B20+                   TO-92-3          qty=1
+  U3    6N137 optocoupler            6N137                      DIP-8            qty=1
+  U4    LM35 analog temp sensor      LM35DZ/NOPB                TO-92-3          qty=1
+  U7    Si5351A clock generator      Si5351A-B-GTR              MSOP-10          qty=1
+  U8    TMP117 +-0.1C sensor         TMP117AIDRVR               WSON-6 2x2mm     qty=1
+  U9    MCP9808 +-0.25C sensor       MCP9808-E/MS               MSOP-8           qty=1
+  XS1   DIP-8 machined socket        DS1001-01-08BT1NSF6X-JKB   THT 2.54mm       qty=3
+  XS2   DIP-8 machined socket        DS1001-01-08BT1NSF6X-JKB   THT 2.54mm       qty=3
+  XS3   DIP-8 machined socket        DS1001-01-08BT1NSF6X-JKB   THT 2.54mm       qty=3
+  XS4   1x3 machined socket          MF254V-11-03-0743          THT 2.54mm       qty=4
+  XS5   1x3 machined socket          MF254V-11-03-0743          THT 2.54mm       qty=4
+  XS6   1x3 machined socket          MF254V-11-03-0743          THT 2.54mm       qty=4
+  XS7   1x3 machined socket          MF254V-11-03-0743          THT 2.54mm       qty=4
+  Y1    25MHz crystal                X322525MOB4SI              SMD3225-4P CL12pF qty=1

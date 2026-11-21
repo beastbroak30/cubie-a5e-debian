@@ -1,0 +1,37 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120161846
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\patch_sd_card.ps1
+Process ID: 21888
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== TARGET DISK VERIFICATION ===
+Target disk: Number=2, Name=Generic- xD/SD/M.S., Size=119.38 GB, Bus=USB
+Boot package to write: 4194304 bytes (4 MB)
+Writing to sector 24576 (byte offset 12582912)...
+Taking Disk 2 offline for exclusive raw write access...
+Raw write succeeded.
+Verifying written bytes from card...
+Read back 4194304 bytes.
+Original hash: B850C315CF80DA025E06D9F02B3A0E60930281E23D2028859B8639F53CEE0B94
+Readback hash: B850C315CF80DA025E06D9F02B3A0E60930281E23D2028859B8639F53CEE0B94
+>>> VERIFICATION PASSED: 100% BYTE MATCH <<<
+Bringing Disk 2 back online...
+Ejecting card...
+Ejected drive E:
+=== FINISHED SUCCESSFULLY ===
+**********************
+Windows PowerShell transcript end
+End time: 20261120161855
+**********************

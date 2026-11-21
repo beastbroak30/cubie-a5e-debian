@@ -1,0 +1,5 @@
+select disk 2
+select partition 2
+assign letter=F
+detail partition
+list volume

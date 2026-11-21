@@ -1,0 +1,5 @@
+rescan
+select disk 2
+list partition
+list volume
+exit

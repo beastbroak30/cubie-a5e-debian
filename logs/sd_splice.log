@@ -1,0 +1,22 @@
+﻿start 2026-11-20T12:20:31.2777722+05:30
+prefix bytes=67108864
+spliced OK
+--- disk ---
+
+
+Number            : 2
+PartitionStyle    : MBR
+Size              : 128177930240
+OperationalStatus : Online
+
+
+
+--- partitions ---
+
+PartitionNumber DriveLetter SizeGB Type
+--------------- ----------- ------ ----
+              1           E 119.37 IFS 
+
+
+--- volumes ---
+done 2026-11-20T12:21:05.6132038+05:30

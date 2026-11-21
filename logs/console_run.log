@@ -1,0 +1,22 @@
+[open] COM5
+[login] sending user
+radxa
+Password: 
+[login] sending password
+
+Linux cubie-a5e 5.15.147+ #1 SMP PREEMPT Fri Nov 20 12:45:58 IST 2026 aarch64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+[?2004hradxa@cubie-a5e:~$ 
+
+>>> mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGgy3dMEJ9tefTtNr2dx/oXLAY4DQVpr7Apz5RHfwf5+ cubie-a5e' > ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && cat ~/.ssh/authorized_keys && ls -ld ~/.ssh
+mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGgy3dMEJ9tefTtNr2dx/oXLAY4DQVpr7Apz5RHfwf5+ cubie-a5e' > ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && cat ~/.ssh/authorized_keys && ls -ld ~/.ssh; echo __DONE__
+[?2004lssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGgy3dMEJ9tefTtNr2dx/oXLAY4DQVpr7Apz5RHfwf5+ cubie-a5e
+drwx------ 2 radxa radxa 4096 Apr 27 19:56 /home/radxa/.ssh
+__DONE__
+[?2004hradxa@cubie-a5e:~$ 

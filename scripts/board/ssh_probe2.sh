@@ -1,0 +1,21 @@
+#!/bin/bash
+set -u
+SSH="sshpass -p radxa ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 radxa@10.55.0.1"
+echo '=== expand-rootfs ==='
+$SSH 'systemctl status expand-rootfs --no-pager -l | head -20; cat /usr/local/sbin/expand-rootfs.sh; systemctl is-enabled expand-rootfs.service'
+echo '=== disk layout / free ==='
+$SSH 'df -h /; parted -s /dev/mmcblk0 print 2>&1 | head -20 || true'
+echo '=== zram config ==='
+$SSH 'cat /etc/systemd/zram-generator.conf 2>/dev/null; cat /etc/default/zramswap 2>/dev/null | grep -v "^#"; systemctl status zramswap --no-pager | head -8; cat /proc/swaps'
+echo '=== ethtool ==='
+$SSH 'ethtool -i eth0 2>&1 | head -6; ethtool eth0 2>/dev/null | grep -E "Speed|Duplex|Link detected"'
+echo '=== wifi / bt ==='
+$SSH 'rfkill list 2>&1; nmcli dev status 2>&1; nmcli radio 2>&1; lsmod | grep -Ei "aic|rtw|8852|bluetooth" | head'
+echo '=== firmware ==='
+$SSH 'ls /lib/firmware/ | head -30; ls /lib/firmware/aic8800* 2>/dev/null | head'
+echo '=== ifupdown usb0 ==='
+$SSH 'cat /etc/network/interfaces; ls /etc/network/interfaces.d/; systemctl cat ifup@usb0.service --no-pager 2>&1 | head -5; journalctl -u ifup@usb0 -b --no-pager | tail -10'
+echo '=== apt ==='
+$SSH 'apt-get update -qq 2>&1 | tail -5; apt-cache policy git | head -6'
+echo '=== tools ==='
+$SSH 'for c in git gcc make python3 pip3 dtc; do printf "%s: " $c; command -v $c || echo MISSING; done'

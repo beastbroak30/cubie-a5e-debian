@@ -1,0 +1,20 @@
+﻿start 2026-11-20T12:22:33.1929272+05:30
+read back 67108864 bytes
+card = 8f9b1280b1012e96fa53e51d68be561e
+file = 8f9b1280b1012e96fa53e51d68be561e
+match = True
+restart USBSTOR\DISK&VEN_RSUER&PROD_RTSUERLUN0&REV_1.00\0000
+Microsoft PnP Utility
+
+Failed to restart device:  USBSTOR\Disk&Ven_RSUER&Prod_RTSUERLUN0&Rev_1.00\0000
+Device is pending system reboot to complete a previous operation.
+
+This command is not supported on this OS product.
+--- volumes ---
+
+PartitionNumber DriveLetter Type
+--------------- ----------- ----
+              1           E IFS 
+
+
+done 2026-11-20T12:23:06.4076214+05:30

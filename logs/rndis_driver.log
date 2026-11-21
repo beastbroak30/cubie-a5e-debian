@@ -1,0 +1,36 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120171725
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\check_rndis_driver.ps1
+Process ID: 17916
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== CURRENT RNDIS DEVICE STATUS ===
+
+
+InstanceId         : USB\VID_1D6B&PID_0104&MI_00\6&202B6536&0&0000
+FriendlyName       : RNDIS
+Class              :
+Status             : Error
+Problem            : CM_PROB_FAILED_INSTALL
+ProblemDescription : The drivers for this device are not installed. (Code 28).
+
+
+
+=== LOOKING FOR BUILT-IN WINDOWS RNDIS DRIVER ===
+
+**********************
+Windows PowerShell transcript end
+End time: 20261120171729
+**********************

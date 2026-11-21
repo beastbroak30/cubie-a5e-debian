@@ -1,0 +1,26 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120172446
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\check_reg_rndis.ps1
+Process ID: 25044
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== CONFIGURING USB RNDIS COMPATIBLE IDS IN REGISTRY ===
+Found device key in registry.
+Current CompatibleIDs: USB\COMPAT_VID_1d6b&Class_02&SubClass_06&Prot_00, USB\COMPAT_VID_1d6b&Class_02&SubClass_06, USB\COMPAT_VID_1d6b&Class_02, USB\Class_02&SubClass_06&Prot_00, USB\Class_02&SubClass_06, USB\Class_02
+Existing OEM RNDIS infs: 8
+**********************
+Windows PowerShell transcript end
+End time: 20261120172447
+**********************

@@ -1,0 +1,7 @@
+generated: 2026-11-21T10:17:40Z
+kernel: 5.15.147+
+cmdline: root=UUID=7cf9f135-82db-4514-af4e-5817cb922fec console=ttyAS0,115200n8 earlyprintk=sunxi-uart,0x2500000 rootwait rw loglevel=7 clk_ignore_unused mac_addr=08:ef:6c:a9:84:88 mac1_addr=08:ef:6c:a9:84:89 coherent_pool=2M irqchip.gicv3_pseudo_nmi=0 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1 kasan=off
+hostname: cubie-a5e
+dtb: 
+model: sun55iw3
+compatible: radxa,cubie-a5earm,sun55iw3p1allwinner,sun55i-a527

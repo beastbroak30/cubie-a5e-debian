@@ -1,0 +1,34 @@
+﻿start
+
+Microsoft DiskPart version 10.0.26100.1150
+
+Copyright (C) Microsoft Corporation.
+On computer: BEASTBROAK30
+
+Disk 2 is now the selected disk.
+
+  Volume ###  Ltr  Label        Fs     Type        Size     Status     Info
+  ----------  ---  -----------  -----  ----------  -------  ---------  --------
+  Volume 0     C                NTFS   Partition    452 GB  Healthy    Boot    
+  Volume 1         SYSTEM       FAT32  Partition    800 MB  Healthy    System  
+  Volume 2                      NTFS   Partition    921 MB  Healthy    Hidden  
+  Volume 3                      NTFS   Partition     21 GB  Healthy    Hidden  
+  Volume 4         SAMSUNG_REC  FAT32  Partition   1024 MB  Healthy    Hidden  
+  Volume 5     D   WD_SSD       NTFS   Partition    931 GB  Healthy            
+
+Partition 1 is now the selected partition.
+
+Partition 1
+Type  : 07
+Hidden: No
+Active: Yes
+Offset in Bytes: 1048576
+
+There is no volume associated with this partition.
+
+Leaving DiskPart...
+letter=E type=IFS
+volume object:    
+open fail: \\.\E: Exception calling ".ctor" with "4" argument(s): "Access to the path '\\.\E:' is denied."
+open ok: \\.\PhysicalDrive2
+done

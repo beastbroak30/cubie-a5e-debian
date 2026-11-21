@@ -1,0 +1,4 @@
+select disk 2
+detail disk
+list volume
+exit

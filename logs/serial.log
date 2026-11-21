@@ -1,0 +1,31 @@
+=== capture start 2026-11-20T16:05:40.6237809+05:30 COM6 115200 8N1 DTR=off RTS=off ===
+??g??3fff?
+[361]dram_para[24]:0x1f0b0503
+[364]dram_para[25]:0x0
+[366]dram_para[26]:0x3a000000
+[369]dram_para[27]:0x802f3333
+[373]dram_para[28]:0xc0c0bbbf
+[376]dram_para[29]:0x35352f31
+[379]dram_para[30]:0xc64
+[382]dram_para[31]:0x48484848
+[385]board init ok
+k
+[410]card no is 0
+[412]sdcard 0 line count 4
+[415][mmc]: mmc driver ver 2023-03-24 16:23
+[425][mmc]: Wrong media type 0x0
+[428][mmc]: ***Try SD card 0***
+[439][mmc]: HSSDR52/SDR25 4 bit
+[443][mmc]: 50000000 Hz
+[445][mmc]: 122240 MB
+[448][mmc]: ***SD/MMC 0 init OK!!!***
+[459]boot param - magic error
+[462]DRAM BOOT DRIVE INFO: V0.6?
+[466]DRAM_VCC set to 1100 mv
+k??f?4j??&+???KsK?ten 
+K?c&s[?F?KsKs;v?+??????ff?m??67FMKsKs;f???K{s?FM??
+
+=== capture stop 2026-11-20T17:05:40.6805790+05:30 ===
+15200 8N1 ===
+
+=== CAPTURE STOP 2026-11-20T17:19:08.1376512+05:30 ===

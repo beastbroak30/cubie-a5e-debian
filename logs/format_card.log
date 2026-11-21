@@ -1,0 +1,66 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120154410
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\format_card.ps1
+Process ID: 17276
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== FORMAT START 2026-11-20T15:44:12.2950027+05:30 ===
+
+
+Number         : 2
+FriendlyName   : Generic- xD/SD/M.S.
+Size           : 128177930240
+PartitionStyle : GPT
+IsReadOnly     : False
+IsOffline      : False
+
+
+
+Guard passed: card reader, ~119 GB
+Clearing partitions...
+Creating single partition, full size...
+Partition created: E: offset=1048576 size=128175833088
+Format OK
+=== RESULT ===
+
+
+Number         : 2
+FriendlyName   : Generic- xD/SD/M.S.
+Size           : 128177930240
+PartitionStyle : GPT
+
+
+
+
+PartitionNumber DriveLetter  Offset         Size Type
+--------------- -----------  ------         ---- ----
+              1           E 1048576 128175833088 Basic
+
+
+
+
+DriveLetter     : E
+FileSystemLabel : RADXA
+FileSystem      : exFAT
+Size            : 128170590208
+SizeRemaining   : 128169803776
+
+
+
+=== FORMAT DONE 2026-11-20T15:44:28.3175312+05:30 ===
+**********************
+Windows PowerShell transcript end
+End time: 20261120154428
+**********************

@@ -1,0 +1,47 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-11-18T17:29:48",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/e5882320-1f91-4e0c-bcc1-8fcda9f73080",
+            "violations": []
+        },
+        {
+            "path": "/Carrier Harness (15x20 cm)/",
+            "uuid_path": "/e5882320-1f91-4e0c-bcc1-8fcda9f73080/3dbe872d-4b50-4f49-84a2-87c1d9f96f57",
+            "violations": []
+        },
+        {
+            "path": "/Analog Core (3x7 cm)/",
+            "uuid_path": "/e5882320-1f91-4e0c-bcc1-8fcda9f73080/c5d6c03a-902d-4828-8c8b-2f329774d6ea",
+            "violations": []
+        }
+    ],
+    "source": "kanre-m1.kicad_sch"
+}

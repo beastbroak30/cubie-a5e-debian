@@ -1,0 +1,12 @@
+﻿start 2026-11-20T12:12:46.8023012+05:30
+cycle USBSTOR\DISK&VEN_RSUER&PROD_RTSUERLUN0&REV_1.00\0000 status=OK
+disk online=Online partitions=0
+New-Volume fail: Cannot process argument transformation on parameter 'FileSystem'. Cannot convert value "exFAT" to type "New-Volume.FileSystemType". Error: "Unable to match the identifier name exFAT to a valid enumerator name. Specify one of the following enumerator names and try again:
+NTFS, ReFS, CSVFS_NTFS, CSVFS_ReFS"
+
+PartitionNumber DriveLetter SizeGB Type   
+--------------- ----------- ------ ----   
+              1           E 119.37 Logical
+
+
+done 2026-11-20T12:13:13.5730873+05:30

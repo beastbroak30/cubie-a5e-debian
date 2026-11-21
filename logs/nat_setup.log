@@ -1,0 +1,52 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261121150739
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\nat_setup.ps1
+Process ID: 20004
+PSVersion: 5.1.26100.10068
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.10068
+BuildVersion: 10.0.26100.10068
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== BEFORE ===
+
+Name       Status InterfaceIndex
+----       ------ --------------
+Ethernet 5 Up                 53
+
+
+
+IPAddress  PrefixLength PrefixOrigin
+---------  ------------ ------------
+10.55.0.13           24         Dhcp
+
+
+=== static IP on USB link (Windows side) ===
+=== enable forwarding + NAT ===
+=== AFTER ===
+
+IPAddress PrefixLength
+--------- ------------
+10.55.0.2           24
+
+
+
+Name     InternalIPInterfaceAddressPrefix Active
+----     -------------------------------- ------
+CubieUSB 10.55.0.0/24                       True
+
+
+=== ping board ===
+True
+**********************
+Windows PowerShell transcript end
+End time: 20261121150754
+**********************

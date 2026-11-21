@@ -1,0 +1,1 @@
+Build root is /home/akar/cubie-a5e-fw inside WSL2 (native ext4). AGENTS.md there is canonical; this copy is a mirror.

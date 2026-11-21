@@ -1,0 +1,1137 @@
+diff --git a/firmware/esp32-csi-node/main/config_rules.c b/firmware/esp32-csi-node/main/config_rules.c
+index a6abb41..a40538b 100644
+--- a/firmware/esp32-csi-node/main/config_rules.c
++++ b/firmware/esp32-csi-node/main/config_rules.c
+@@ -44,6 +44,7 @@ const cfg_key_t CONFIG_KEYS[] = {
+     { "swarm_ingest_sec",   "swarm_ingest", T_U16,   1, 65535,     0,   0,   false },
+     { "led_mode",           "led_mode",     T_U8,    0,     2,     0,   0,   false },
+     { "led_brightness",     "led_bright",   T_U8,    0,   100,     0,   0,   false },
++    { "led_gpio",           "led_gpio",     T_U8,    0,    48,     0,   0,   false },
+ };
+ 
+ const size_t CONFIG_KEY_COUNT = sizeof(CONFIG_KEYS) / sizeof(CONFIG_KEYS[0]);
+diff --git a/firmware/esp32-csi-node/main/main.c b/firmware/esp32-csi-node/main/main.c
+index d77f273..807da7f 100644
+--- a/firmware/esp32-csi-node/main/main.c
++++ b/firmware/esp32-csi-node/main/main.c
+@@ -192,7 +192,36 @@ static void wifi_init_sta(void)
+ 
+     ESP_ERROR_CHECK(esp_netif_init());
+     ESP_ERROR_CHECK(esp_event_loop_create_default());
+-    esp_netif_create_default_wifi_sta();
++    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
++
++    /* Optional static IPv4, applied only while joined to the configured SSID
++     * (the node joins nothing else). Empty static_ip keeps DHCP. */
++    if (g_nvs_config.static_ip[0] != '\0') {
++        esp_netif_ip_info_t ip = {0};
++        if (esp_netif_str_to_ip4(g_nvs_config.static_ip, &ip.ip) == ESP_OK) {
++            if (g_nvs_config.netmask[0] != '\0') {
++                esp_netif_str_to_ip4(g_nvs_config.netmask, &ip.netmask);
++            }
++            if (g_nvs_config.gateway[0] != '\0') {
++                esp_netif_str_to_ip4(g_nvs_config.gateway, &ip.gw);
++            }
++            esp_netif_dhcpc_stop(sta_netif);
++            ESP_ERROR_CHECK(esp_netif_set_ip_info(sta_netif, &ip));
++            if (g_nvs_config.dns[0] != '\0') {
++                esp_netif_dns_info_t d = {0};
++                d.ip.type = ESP_IPADDR_TYPE_V4;
++                if (esp_netif_str_to_ip4(g_nvs_config.dns, &d.ip.u_addr.ip4) == ESP_OK) {
++                    esp_netif_set_dns_info(sta_netif, ESP_NETIF_DNS_MAIN, &d);
++                }
++            }
++            ESP_LOGI(TAG, "static ip %s/%s gw %s (ssid %s)",
++                     g_nvs_config.static_ip, g_nvs_config.netmask,
++                     g_nvs_config.gateway, g_nvs_config.wifi_ssid);
++        } else {
++            ESP_LOGW(TAG, "bad static_ip '%s', falling back to DHCP",
++                     g_nvs_config.static_ip);
++        }
++    }
+ 
+     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+@@ -397,10 +426,14 @@ void app_main(void)
+      * Behaviour is set by CONFIG_LED_GAMMA_VIZ (ADR-183): on = 40 Hz gamma flicker
+      * coloured by CSI motion; off = clear the LED at boot. */
+ #if defined(CONFIG_IDF_TARGET_ESP32C6)
+-    const int led_gpio = 8;
++    const int led_default_gpio = 8;
+ #else
+-    const int led_gpio = 48;
++    const int led_default_gpio = 48;
+ #endif
++    /* Boards differ: DevKitC-1 v1.0 wires the RGB LED to GPIO38, v1.1/N16R8 to
++     * GPIO48; some clones have none. `led_gpio` (NVS) overrides the default. */
++    const int led_gpio = g_nvs_config.led_gpio > 0 ? g_nvs_config.led_gpio
++                                                   : led_default_gpio;
+     led_strip_config_t strip_config = {
+         .strip_gpio_num = led_gpio,
+         .max_leds = 1,
+diff --git a/firmware/esp32-csi-node/main/mmwave_sensor.h b/firmware/esp32-csi-node/main/mmwave_sensor.h
+index b1b4d78..ac39757 100644
+--- a/firmware/esp32-csi-node/main/mmwave_sensor.h
++++ b/firmware/esp32-csi-node/main/mmwave_sensor.h
+@@ -22,6 +22,8 @@ typedef enum {
+     MMWAVE_TYPE_NONE      = 0,  /**< No sensor detected. */
+     MMWAVE_TYPE_MR60BHA2  = 1,  /**< Seeed MR60BHA2 (60 GHz, HR + BR). */
+     MMWAVE_TYPE_LD2410    = 2,  /**< HLK-LD2410 (24 GHz, presence + range). */
++    MMWAVE_TYPE_LD2450    = 3,  /**< HLK-LD2450 (24 GHz, 3-target x/y tracks). */
++    MMWAVE_TYPE_LD6002    = 4,  /**< HLK-LD6002 (60 GHz, HR + BR + range). */
+     MMWAVE_TYPE_MOCK      = 99, /**< Mock sensor for QEMU testing. */
+ } mmwave_type_t;
+ 
+diff --git a/firmware/esp32-csi-node/main/nvs_config.c b/firmware/esp32-csi-node/main/nvs_config.c
+index 88d7c06..f093b7a 100644
+--- a/firmware/esp32-csi-node/main/nvs_config.c
++++ b/firmware/esp32-csi-node/main/nvs_config.c
+@@ -33,6 +33,7 @@ void nvs_config_load(nvs_config_t *cfg)
+ 
+     cfg->led_mode = LED_MODE_FLICKER;
+     cfg->led_brightness = 100;
++    cfg->led_gpio = 0;
+ 
+     /* Start with Kconfig compiled defaults */
+     strlcpy(cfg->wifi_ssid, CONFIG_CSI_WIFI_SSID, sizeof(cfg->wifi_ssid));
+@@ -151,6 +152,25 @@ void nvs_config_load(nvs_config_t *cfg)
+         ESP_LOGI(TAG, "NVS override: node_id=%u", cfg->node_id);
+     }
+ 
++    /* Optional static IPv4 (scoped to the configured SSID) */
++    len = sizeof(buf);
++    if (nvs_get_str(handle, "static_ip", buf, &len) == ESP_OK && len > 1) {
++        strlcpy(cfg->static_ip, buf, sizeof(cfg->static_ip));
++        ESP_LOGI(TAG, "NVS override: static_ip=%s", cfg->static_ip);
++    }
++    len = sizeof(buf);
++    if (nvs_get_str(handle, "netmask", buf, &len) == ESP_OK && len > 1) {
++        strlcpy(cfg->netmask, buf, sizeof(cfg->netmask));
++    }
++    len = sizeof(buf);
++    if (nvs_get_str(handle, "gateway", buf, &len) == ESP_OK && len > 1) {
++        strlcpy(cfg->gateway, buf, sizeof(cfg->gateway));
++    }
++    len = sizeof(buf);
++    if (nvs_get_str(handle, "dns", buf, &len) == ESP_OK && len > 1) {
++        strlcpy(cfg->dns, buf, sizeof(cfg->dns));
++    }
++
+     /* ADR-029: Channel hop count */
+     uint8_t hop_count_val;
+     if (nvs_get_u8(handle, "hop_count", &hop_count_val) == ESP_OK) {
+@@ -337,6 +357,12 @@ void nvs_config_load(nvs_config_t *cfg)
+         ESP_LOGI(TAG, "NVS override: led_brightness=%u", led_bright_val);
+     }
+ 
++    uint8_t led_gpio_val = 0;
++    if (nvs_get_u8(handle, "led_gpio", &led_gpio_val) == ESP_OK) {
++        cfg->led_gpio = led_gpio_val;
++        ESP_LOGI(TAG, "NVS override: led_gpio=%u", led_gpio_val);
++    }
++
+     if (nvs_get_u16(handle, "swarm_ingest", &cfg->swarm_ingest_sec) != ESP_OK) {
+         cfg->swarm_ingest_sec = 5;
+     }
+diff --git a/firmware/esp32-csi-node/main/nvs_config.h b/firmware/esp32-csi-node/main/nvs_config.h
+index 536e586..efca0bf 100644
+--- a/firmware/esp32-csi-node/main/nvs_config.h
++++ b/firmware/esp32-csi-node/main/nvs_config.h
+@@ -33,6 +33,12 @@ typedef struct {
+     uint16_t target_port;
+     uint8_t  node_id;
+ 
++    /* Optional static IPv4 for the configured SSID only (empty = DHCP). */
++    char     static_ip[NVS_CFG_IP_MAX];
++    char     netmask[NVS_CFG_IP_MAX];
++    char     gateway[NVS_CFG_IP_MAX];
++    char     dns[NVS_CFG_IP_MAX];
++
+     /* ADR-029: Channel hopping and TDM configuration */
+     uint8_t  channel_hop_count;               /**< Number of channels to hop (1 = no hop). */
+     uint8_t  channel_list[NVS_CFG_HOP_MAX];   /**< Channel numbers for hopping. */
+@@ -72,6 +78,7 @@ typedef struct {
+      * in a bedroom -- hence runtime selectable rather than Kconfig-only. */
+     uint8_t  led_mode;                   /**< 0=off, 1=steady colour, 2=40Hz flicker. */
+     uint8_t  led_brightness;             /**< Percent, 0-100, scales the colormap. */
++    uint8_t  led_gpio;                   /**< WS2812 data GPIO; 0 = board default (S3 48 / C6 8). */
+ } nvs_config_t;
+ 
+ #define LED_MODE_OFF     0
+diff --git a/firmware/esp32-csi-node/provision.py b/firmware/esp32-csi-node/provision.py
+index ab32b88..2ba1a5d 100644
+--- a/firmware/esp32-csi-node/provision.py
++++ b/firmware/esp32-csi-node/provision.py
+@@ -522,6 +522,19 @@ def build_nvs_csv(args):
+         writer.writerow(["target_port", "data", "u16", str(args.target_port)])
+     if args.node_id is not None:
+         writer.writerow(["node_id", "data", "u8", str(args.node_id)])
++    if args.static_ip:
++        writer.writerow(["static_ip", "data", "string", args.static_ip])
++        writer.writerow(["netmask", "data", "string", args.netmask or "255.255.255.0"])
++        if args.gateway:
++            writer.writerow(["gateway", "data", "string", args.gateway])
++        if args.dns:
++            writer.writerow(["dns", "data", "string", args.dns])
++    if args.led_gpio is not None:
++        writer.writerow(["led_gpio", "data", "u8", str(args.led_gpio)])
++    if args.led_mode is not None:
++        writer.writerow(["led_mode", "data", "u8", str(args.led_mode)])
++    if args.led_brightness is not None:
++        writer.writerow(["led_bright", "data", "u8", str(args.led_brightness)])
+     # TDM mesh settings
+     if args.tdm_slot is not None:
+         writer.writerow(["tdm_slot", "data", "u8", str(args.tdm_slot)])
+@@ -687,6 +700,16 @@ def main():
+     parser.add_argument("--target-ip", help="Aggregator host IP (e.g. 192.168.1.20)")
+     parser.add_argument("--target-port", type=int, help="Aggregator UDP port (default: 5005)")
+     parser.add_argument("--node-id", type=int, help="Node ID 0-255 (default: 1)")
++    parser.add_argument("--static-ip", help="Optional static IPv4 for this node on the configured SSID (e.g. 192.168.1.10)")
++    parser.add_argument("--netmask", help="Static IPv4 netmask (default when --static-ip is used: 255.255.255.0)")
++    parser.add_argument("--gateway", help="Static IPv4 gateway (e.g. 192.168.1.1)")
++    parser.add_argument("--dns", help="Static DNS server (e.g. 192.168.1.1)")
++    parser.add_argument("--led-gpio", type=int, choices=range(0, 49),
++                        help="WS2812 data GPIO (0=board default: S3 48, C6 8; DevKitC-1 v1.0 uses 38)")
++    parser.add_argument("--led-mode", type=int, choices=[0, 1, 2],
++                        help="0=off, 1=steady colour, 2=40Hz flicker")
++    parser.add_argument("--led-brightness", type=int, choices=range(0, 101),
++                        help="LED brightness percent")
+     # TDM mesh settings
+     parser.add_argument("--tdm-slot", type=int, help="TDM slot index for this node (0-based)")
+     parser.add_argument("--tdm-total", type=int, help="Total number of TDM nodes in mesh")
+diff --git a/ui/index.html b/ui/index.html
+index 857ebf2..df21071 100644
+--- a/ui/index.html
++++ b/ui/index.html
+@@ -21,6 +21,7 @@
+             <h1>WiFi DensePose</h1>
+             <p class="subtitle" data-i18n="dashboard.subtitle">Human Tracking Through Walls Using WiFi Signals</p>
+             <div class="header-info">
++                <span id="rv-module-distance" class="rv-module-distance" title="mmWave module distance"></span>
+                 <span class="api-version" aria-label="API version"></span>
+                 <span class="api-environment" aria-label="Environment"></span>
+                 <span class="overall-health" role="status" aria-live="polite" aria-label="System health"></span>
+@@ -125,7 +126,7 @@
+                     <h3 data-i18n="dashboard.liveStats">Live Statistics</h3>
+                     <div class="stats-grid">
+                         <div class="stat-item">
+-                            <span class="stat-label">Active Persons</span>
++                            <span class="stat-label">Active Persons <span id="persons-src-index" class="rv-md-src"></span></span>
+                             <span class="person-count">0</span>
+                         </div>
+                         <div class="stat-item">
+@@ -517,5 +518,7 @@
+ 
+     <!-- Load application scripts as modules -->
+     <script type="module" src="app.js"></script>
++    <!-- mmWave module distance readout (works with zero CSI nodes) -->
++    <script type="module" src="./services/mmwave-distance.js"></script>
+ </body>
+ </html>
+\ No newline at end of file
+diff --git a/ui/observatory.html b/ui/observatory.html
+index 6b578db..02216dd 100644
+--- a/ui/observatory.html
++++ b/ui/observatory.html
+@@ -69,11 +69,18 @@
+       <div class="vital-row">
+         <div class="vital-icon">&#9878;</div>
+         <div class="vital-data">
+-          <div class="vital-label">Confidence</div>
++          <div class="vital-label">Confidence <span id="vitals-source" class="vital-src"></span></div>
+           <div class="vital-value"><span id="conf-value">--</span><span class="vital-unit">%</span></div>
+           <div class="vital-bar"><div id="conf-bar" class="vital-bar-fill vital-bar--conf"></div></div>
+         </div>
+       </div>
++      <div class="vital-row">
++        <div class="vital-icon">&#8982;</div>
++        <div class="vital-data">
++          <div class="vital-label">Distance <span id="dist-source" class="vital-src"></span></div>
++          <div class="vital-value"><span id="dist-value">--</span> <span class="vital-unit">CM</span></div>
++        </div>
++      </div>
+     </div>
+ 
+     <!-- Right panel: Signal & Presence -->
+@@ -92,10 +99,14 @@
+         <span class="signal-value" id="motion-value">--</span>
+       </div>
+       <div class="signal-row">
+-        <span class="signal-label">Persons</span>
++        <span class="signal-label">Persons <span id="persons-source" class="vital-src"></span></span>
+         <span class="signal-value" id="persons-value">0</span>
+         <span id="persons-dots" class="persons-dots"></span>
+       </div>
++      <div class="signal-row" id="modules-row">
++        <span class="signal-label">Modules</span>
++        <span class="signal-value" id="mmwave-sensors">--</span>
++      </div>
+       <canvas id="rssi-sparkline" width="200" height="48"></canvas>
+ 
+       <div class="panel-header" style="margin-top:12px">Presence</div>
+@@ -314,7 +325,7 @@
+             <option value="ws">Live WebSocket</option>
+           </select>
+         </label>
+-        <label class="setting-row" id="ws-url-row" style="display:none">
++        <label class="setting-row" id="ws-url-row">
+           <span>WS URL</span>
+           <input type="text" id="opt-ws-url" value="" placeholder="ws://localhost:3000/ws/sensing">
+         </label>
+diff --git a/ui/observatory/css/observatory.css b/ui/observatory/css/observatory.css
+index e289d65..83499f7 100644
+--- a/ui/observatory/css/observatory.css
++++ b/ui/observatory/css/observatory.css
+@@ -696,3 +696,35 @@ body {
+   #key-hints { display: none; }
+   .settings-dialog { width: 95vw; }
+ }
++
++/* mmWave provenance labels (room-level fusion) */
++.vital-src {
++  font-size: 9px;
++  letter-spacing: 1px;
++  opacity: 0.7;
++  margin-left: 6px;
++  text-transform: uppercase;
++}
++
++/* Per-module distance list: stack the label above the value so two sensors
++   fit without colliding with the sparkline. */
++#modules-row {
++  display: block;
++}
++#modules-row .signal-label {
++  display: block;
++  margin-bottom: 2px;
++}
++#mmwave-sensors {
++  display: block;
++  font-size: 10px;
++  line-height: 1.35;
++  text-align: left;
++  white-space: normal;
++  word-break: break-word;
++  opacity: 0.85;
++}
++#mmwave-sensors:empty {
++  display: none;
++}
++
+diff --git a/ui/observatory/js/hud-controller.js b/ui/observatory/js/hud-controller.js
+index 14afc6b..6ca6c61 100644
+--- a/ui/observatory/js/hud-controller.js
++++ b/ui/observatory/js/hud-controller.js
+@@ -421,9 +421,38 @@ export class HudController {
+     this._setText('var-value', (feat.variance || 0).toFixed(2));
+     this._setText('motion-value', (feat.motion_band_power || 0).toFixed(3));
+ 
++    // mmWave distance + provenance (room-level fusion; modules outrank CSI)
++    const distCm = data.mmwave_distance_cm || 0;
++    this._setText('dist-value', distCm > 0 ? distCm.toFixed(1) : '--');
++    const distSrc = document.getElementById('dist-source');
++    if (distSrc) {
++      distSrc.textContent = distCm > 0 ? String(data.mmwave_distance_source || 'mmwave') : '';
++    }
++    const srcEl = document.getElementById('vitals-source');
++    if (srcEl) {
++      srcEl.textContent = data.vitals_source ? String(data.vitals_source).toUpperCase() : '';
++    }
++    const sensorsEl = document.getElementById('mmwave-sensors');
++    if (sensorsEl) {
++      const list = data.mmwave_sensors || [];
++      sensorsEl.textContent = list
++        .map((s) => {
++          const name = String(s.sensor || 'mmwave').toUpperCase();
++          if (s.distance_cm) return `${name} ${Number(s.distance_cm).toFixed(1)} cm`;
++          if (s.hr_bpm) return `${name} ${Number(s.hr_bpm).toFixed(0)} bpm`;
++          return name;
++        })
++        .join(' · ');
++    }
++
+     // Mini person-count dots
+     const personCount = data.estimated_persons || 0;
+     this._updatePersonDots(personCount);
++    const personsSource = document.getElementById('persons-source');
++    if (personsSource) {
++      const src = data.person_source ? String(data.person_source).toUpperCase() : '';
++      personsSource.textContent = src ? `· ${src}` : '';
++    }
+ 
+     const presEl = document.getElementById('presence-indicator');
+     const presLabel = document.getElementById('presence-label');
+diff --git a/ui/observatory/js/main.js b/ui/observatory/js/main.js
+index b014936..c5afc9f 100644
+--- a/ui/observatory/js/main.js
++++ b/ui/observatory/js/main.js
+@@ -9,6 +9,7 @@
+  * - Reflective floor, settings dialog, and practical data HUD
+  */
+ import { withWsTicket } from '../../services/ws-ticket.js';
++import { buildSensingWsUrl } from '../../services/sensing.service.js';
+ import * as THREE from 'three';
+ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+ 
+@@ -131,6 +132,8 @@ class Observatory {
+     // WebSocket for live data — always try auto-detect on startup
+     this._ws = null;
+     this._liveData = null;
++    this._liveFused = null;
++    this._liveFusedAt = 0;
+     this._autoDetectLive();
+ 
+     // Input
+@@ -437,40 +440,16 @@ class Observatory {
+   // ---- WebSocket live data ----
+ 
+   _autoDetectLive() {
+-    // Probe sensing server health on same origin, then common ports
+-    const host = window.location.hostname || 'localhost';
+-    const candidates = [
+-      window.location.origin,                   // same origin (e.g. :3000)
+-      `http://${host}:8765`,                     // default WS port
+-      `http://${host}:3000`,                     // default HTTP port
+-    ];
+-    // Deduplicate
+-    const unique = [...new Set(candidates)];
+-
+-    const tryNext = (i) => {
+-      if (i >= unique.length) {
+-        console.log('[Observatory] No sensing server detected, using demo mode');
+-        return;
+-      }
+-      const base = unique[i];
+-      fetch(`${base}/health`, { signal: AbortSignal.timeout(1500) })
+-        .then(r => r.ok ? r.json() : Promise.reject())
+-        .then(data => {
+-          if (data && data.status === 'ok') {
+-            const wsProto = base.startsWith('https') ? 'wss:' : 'ws:';
+-            const urlObj = new URL(base);
+-            const wsUrl = `${wsProto}//${urlObj.host}/ws/sensing`;
+-            console.log('[Observatory] Sensing server detected at', base, '→', wsUrl);
+-            this.settings.dataSource = 'ws';
+-            this.settings.wsUrl = wsUrl;
+-            void this._connectWS(wsUrl);
+-          } else {
+-            tryNext(i + 1);
+-          }
+-        })
+-        .catch(() => tryNext(i + 1));
+-    };
+-    tryNext(0);
++    // The sensing server serves this UI, so the live stream is always the
++    // same origin with its documented WS port mapping (3000→3001, 8080→8765).
++    // Pre-fill the editable setting so the URL is visible, then connect.
++    const wsUrl = buildSensingWsUrl();
++    const input = document.getElementById('opt-ws-url');
++    if (input) input.value = wsUrl;
++    console.log('[Observatory] Live sensing WebSocket:', wsUrl);
++    this.settings.dataSource = 'ws';
++    this.settings.wsUrl = wsUrl;
++    void this._connectWS(wsUrl);
+   }
+ 
+   // async: `/ws/sensing` is gated (ADR-272); mint a single-use ticket first.
+@@ -484,7 +463,61 @@ class Observatory {
+         console.log('[Observatory] WebSocket connected');
+         this._hud.updateSourceBadge('ws', this._ws);
+       };
+-      this._ws.onmessage = (evt) => { try { this._liveData = JSON.parse(evt.data); } catch {} };
++      this._ws.onmessage = (evt) => {
++        let msg;
++        try { msg = JSON.parse(evt.data); } catch { return; }
++        if (msg.type === 'edge_fused_vitals') {
++          // ADR-063 fused mmWave packet (WS-only upstream). Fold it into the
++          // sensing_update shape the HUD already renders, so the vitals panel
++          // shows the live LD6002/LD2450 numbers.
++          // Room-level aggregate (server-computed across ALL fresh module
++          // packets) takes precedence: an LD2450 packet (no vitals) must not
++          // clobber a fresh LD6002 heart rate.
++          const room = msg.room_fusion || null;
++          if (room) { this._liveRoom = room; this._liveRoomAt = performance.now(); }
++          const rv = room && room.vitals ? room.vitals : null;
++          const rd = room && room.distance ? room.distance : null;
++          const mm = msg.mmwave || {};
++          const conf = ((rv && rv.confidence) || msg.fusion_confidence || mm.confidence || 0) / 100;
++          const hr = (rv && rv.hr_bpm) || msg.heartrate_bpm || mm.hr_bpm || 0;
++          const br = (rv && rv.br_bpm) || msg.breathing_rate_bpm || mm.br_bpm || 0;
++          const targets = room ? (room.person_count || 0) : (mm.targets || 0);
++          const present = room ? room.presence
++            : (mm.targets || 0) > 0 || hr > 0 || br > 0 || (mm.distance_cm || 0) > 0;
++          const base = this._liveData && this._liveData.type === 'sensing_update' ? this._liveData : {};
++          this._liveData = {
++            ...base,
++            type: 'sensing_update',
++            timestamp: (msg.timestamp_ms || 0) / 1000 || base.timestamp,
++            source: 'esp32',
++            vital_signs: {
++              heart_rate_bpm: hr,
++              breathing_rate_bpm: br,
++              heart_rate_confidence: conf,
++              breathing_confidence: conf,
++            },
++            classification: {
++              ...(base.classification || {}),
++              presence: present,
++              motion_level: targets > 0 ? 'present' : 'absent',
++              confidence: mm.confidence ? mm.confidence / 100 : conf,
++            },
++            mmwave: mm,
++            mmwave_node: msg.node_id,
++            mmwave_sensor: mm.type,
++            estimated_persons: targets,
++            person_source: room ? (room.person_source || 'mmwave') : 'mmwave',
++            mmwave_distance_cm: rd ? rd.distance_cm : (mm.distance_cm || 0),
++            mmwave_distance_source: rd ? rd.source : null,
++            mmwave_sensors: room ? room.sensors : [],
++            vitals_source: rv ? (rv.source || 'mmwave') : 'mmwave',
++          };
++          this._liveFused = msg;
++          this._liveFusedAt = performance.now();
++        } else {
++          this._liveData = msg;
++        }
++      };
+       this._ws.onclose = () => {
+         console.log('[Observatory] WebSocket closed, falling back to demo');
+         this._ws = null;
+@@ -498,24 +531,166 @@ class Observatory {
+   _disconnectWS() {
+     if (this._ws) { this._ws.close(); this._ws = null; }
+     this._liveData = null;
++    this._liveFused = null;
++    this._liveFusedAt = 0;
++    this._liveRoom = null;
++    this._liveRoomAt = 0;
+   }
+ 
+   // ========================================
+   // ANIMATION LOOP
+   // ========================================
+ 
++  /**
++   * Vitals policy: the mmWave modules are the primary source (ADR-063 fused
++   * packets, room-level aggregate preferred so multi-module benches keep the
++   * best vitals per field). CSI-derived vitals only stand in while no module
++   * packet is fresh. Demo data never supplies vitals once live is enabled.
++   */
++  _applyVitalsPriority(data) {
++    const roomAge = this._liveRoomAt ? performance.now() - this._liveRoomAt : Infinity;
++    if (this._liveRoom && roomAge < 5000) {
++      const room = this._liveRoom;
++      const rv = room.vitals || null;
++      const rd = room.distance || null;
++      const conf = ((rv && rv.confidence) || 0) / 100;
++      const hr = (rv && rv.hr_bpm) || 0;
++      const br = (rv && rv.br_bpm) || 0;
++      return {
++        ...data,
++        vital_signs: {
++          heart_rate_bpm: hr,
++          breathing_rate_bpm: br,
++          heart_rate_confidence: conf,
++          breathing_confidence: conf,
++        },
++        classification: {
++          ...((data && data.classification) || {}),
++          presence: room.presence,
++          motion_level: (room.person_count || 0) > 0 ? 'present' : 'absent',
++          confidence: conf,
++        },
++        estimated_persons: room.person_count || 0,
++        person_source: room.person_source || 'mmwave',
++        mmwave_distance_cm: rd ? rd.distance_cm : 0,
++        mmwave_distance_source: rd ? rd.source : null,
++        mmwave_sensors: room.sensors || [],
++        vitals_source: rv ? (rv.source || 'mmwave') : 'none',
++      };
++    }
++    const age = this._liveFusedAt ? performance.now() - this._liveFusedAt : Infinity;
++    if (this._liveFused && age < 5000) {
++      const mm = this._liveFused.mmwave || {};
++      const conf = (this._liveFused.fusion_confidence || mm.confidence || 0) / 100;
++      const present = (mm.targets || 0) > 0 || (mm.hr_bpm || 0) > 0
++        || (mm.br_bpm || 0) > 0 || (mm.distance_cm || 0) > 0;
++      // Distance/per-sensor list always defer to the room aggregate: the last
++      // packet may be the LD6002 with 0 cm while the LD2450 still sees 34 cm.
++      const room = this._liveRoom;
++      const rd = room && room.distance ? room.distance : null;
++      return {
++        ...data,
++        vital_signs: {
++          heart_rate_bpm: this._liveFused.heartrate_bpm || mm.hr_bpm || 0,
++          breathing_rate_bpm: this._liveFused.breathing_rate_bpm || mm.br_bpm || 0,
++          heart_rate_confidence: conf,
++          breathing_confidence: conf,
++        },
++        classification: {
++          ...((data && data.classification) || {}),
++          presence: present,
++          motion_level: (mm.targets || 0) > 0 ? 'present' : 'absent',
++          confidence: mm.confidence ? mm.confidence / 100 : conf,
++        },
++        mmwave: mm,
++        mmwave_node: this._liveFused.node_id,
++        estimated_persons: room ? (room.person_count || 0) : (mm.targets || 0),
++        person_source: room ? (room.person_source || 'mmwave') : 'mmwave',
++        mmwave_distance_cm: rd ? rd.distance_cm : (mm.distance_cm || 0),
++        mmwave_distance_source: rd
++          ? rd.source
++          : (mm.distance_cm ? `type${mm.type || ''}` : null),
++        mmwave_sensors: room ? (room.sensors || []) : [],
++        vitals_source: 'mmwave',
++      };
++    }
++    // Stale/absent path. Keep the last real distance and per-sensor list (the
++    // server marks it `stale`), and keep last-known module vitals with a
++    // STALE provenance tag rather than blanking real measurements.
++    const room = this._liveRoom;
++    const rd = room && room.distance ? room.distance : null;
++    const keep = rd
++      ? {
++          mmwave_distance_cm: rd.distance_cm,
++          mmwave_distance_source: rd.source,
++          mmwave_sensors: room.sensors || [],
++        }
++      : {};
++    if (room && room.vitals) {
++      const rv = room.vitals;
++      const conf = (rv.confidence || 0) / 100;
++      return {
++        ...data,
++        ...keep,
++        vital_signs: {
++          heart_rate_bpm: rv.hr_bpm || 0,
++          breathing_rate_bpm: rv.br_bpm || 0,
++          heart_rate_confidence: conf,
++          breathing_confidence: conf,
++        },
++        vitals_source: `${rv.source || 'mmwave'} · stale`,
++      };
++    }
++    const vs = (data && data.vital_signs) || {};
++    const real = this.settings.dataSource === 'ws'
++      && ((vs.heart_rate_bpm || 0) > 0 || (vs.breathing_rate_bpm || 0) > 0);
++    if (!real) return { ...data, ...keep, vital_signs: {}, vitals_source: 'none' };
++    return { ...data, ...keep, vitals_source: 'csi' };
++  }
++
++  /**
++   * mmWave has no skeletal output (LD2450/LD6002 report range + target count,
++   * not joints). When no CSI pose exists we still show the figure at the
++   * MEASURED range so a detected person is visible; a real CSI skeleton always
++   * wins when one is available.
++   */
++  _withMmwavePersons(data) {
++    const existing = Array.isArray(data.persons) ? data.persons : [];
++    if (existing.length > 0) return data;
++    if (!data.classification || !data.classification.presence) return data;
++    const cm = Number(data.mmwave_distance_cm) || 0;
++    const count = Math.max(1, Math.min(3, Number(data.estimated_persons) || 1));
++    const z = cm > 0 ? cm / 100 : 1.2;
++    const persons = [];
++    for (let i = 0; i < count; i++) {
++      persons.push({
++        id: `mmw${i}`,
++        position: [(i - (count - 1) / 2) * 0.55, 0, z],
++        motion_score: 5,
++        pose: 'standing',
++        facing: Math.PI,
++        source: 'mmwave',
++      });
++    }
++    return { ...data, persons, estimated_persons: persons.length, persons_source: 'mmwave' };
++  }
++
+   _animate() {
+     requestAnimationFrame(() => this._animate());
+     const dt = Math.min(this._clock.getDelta(), 0.1);
+     const elapsed = this._clock.getElapsedTime();
+ 
+     // Data source
++    let data;
+     if (this.settings.dataSource === 'ws' && this._liveData) {
+-      this._currentData = this._liveData;
++      data = this._liveData;
+     } else {
+-      this._currentData = this._demoData.update(dt);
++      data = this._demoData.update(dt);
++      if (this.settings.dataSource === 'ws') data = { ...data, vital_signs: {} };
+     }
+-    const data = this._currentData;
++    data = this._applyVitalsPriority(data);
++    data = this._withMmwavePersons(data);
++    this._currentData = data;
+ 
+     // Updates
+     this._nebula.update(dt, elapsed);
+diff --git a/ui/pose-fusion.html b/ui/pose-fusion.html
+index 7fd6cfd..c31775e 100644
+--- a/ui/pose-fusion.html
++++ b/ui/pose-fusion.html
+@@ -25,6 +25,7 @@
+         <span id="status-label">READY</span>
+       </div>
+       <span id="fps-display" class="fps-badge">-- FPS</span>
++      <span id="rv-module-distance" class="rv-module-distance" title="mmWave module distance"></span>
+       <a href="index.html" class="back-link">&larr; Dashboard</a>
+       <a href="observatory.html" class="back-link">Observatory &rarr;</a>
+     </div>
+@@ -197,5 +198,7 @@
+   </div><!-- /main-grid -->
+ 
+   <script type="module" src="pose-fusion/js/main.js?v=14"></script>
++  <!-- mmWave module distance readout (works with zero CSI nodes) -->
++  <script type="module" src="./services/mmwave-distance.js"></script>
+ </body>
+ </html>
+diff --git a/ui/pose-fusion/js/main.js b/ui/pose-fusion/js/main.js
+index e79d136..44b512a 100644
+--- a/ui/pose-fusion/js/main.js
++++ b/ui/pose-fusion/js/main.js
+@@ -11,6 +11,7 @@ import { FusionEngine } from './fusion-engine.js?v=13';
+ import { PoseDecoder } from './pose-decoder.js?v=13';
+ import { CanvasRenderer } from './canvas-renderer.js?v=13';
+ import { withWsTicket } from '../../services/ws-ticket.js';
++import { buildSensingWsUrl } from '../../services/sensing.service.js';
+ 
+ // === State ===
+ let mode = 'dual';  // 'dual' | 'video' | 'csi'
+@@ -139,25 +140,10 @@ function init() {
+   });
+   csiCnn.tryLoadWasm(wasmBase);
+ 
+-  // Auto-connect to local sensing server WebSocket if available.
+-  // Served from the Docker image, the sensing stream lives one port above the
+-  // HTTP port (3000 -> 3001 is the documented default mapping); the
+-  // standalone dev server stays on :8765.
+-  //
+-  // Issue #1557: a hardcoded `{'3000': '3001'}` map only worked when the UI
+-  // was served on exactly port 3000 — remapping the host port (e.g.
+-  // `-p 3010:3000 -p 3011:3001`, needed whenever 3000 is already taken) fell
+-  // through to `localhost:8765`, which for a remote viewer is nothing on
+-  // *their* machine. `connectLive()` then failed silently. Derive the WS port
+-  // from the actual HTTP port instead of a fixed lookup table, so it follows
+-  // any host-port remapping automatically. This is a best-effort default, not
+-  // a safety mechanism — `onVerifiedFrame` below (issue #1557 fix) is what
+-  // actually prevents an unconfirmed/failed connection from ever being shown
+-  // as LIVE, regardless of whether this guess is right.
+-  const httpPort = Number(window.location.port);
+-  const defaultWsUrl = Number.isFinite(httpPort) && httpPort > 0
+-    ? `ws://${window.location.hostname}:${httpPort + 1}/ws/sensing`
+-    : 'ws://localhost:8765/ws/sensing';
++  // The sensing server serves this page, so the live stream is the same
++  // origin with the documented HTTP→WS port mapping (3000→3001, 8080→8765).
++  // Pre-fill the editable field so the URL is visible; the user may change it.
++  const defaultWsUrl = buildSensingWsUrl();
+   if (wsUrlInput) wsUrlInput.value = defaultWsUrl;
+   // ADR-272: exchange the stored bearer for a single-use ?ticket= before the
+   // upgrade — a browser cannot set an Authorization header on a WebSocket.
+diff --git a/ui/viz.html b/ui/viz.html
+index f87f65e..d95eb51 100644
+--- a/ui/viz.html
++++ b/ui/viz.html
+@@ -82,6 +82,10 @@
+     </div>
+     <!-- Stats.js container -->
+     <div id="stats-container"></div>
++    <!-- mmWave module distance readout (works with zero CSI nodes) -->
++    <div style="position:fixed; top:10px; right:10px; z-index:1000;">
++      <span id="rv-module-distance" class="rv-module-distance" title="mmWave module distance"></span>
++    </div>
+   </div>
+ 
+   <!-- Three.js r160 dropped examples/js/ UMD builds. Load via importmap and
+@@ -372,5 +376,7 @@
+     // -- Start --
+     init();
+   </script>
++  <!-- mmWave module distance readout (works with zero CSI nodes) -->
++  <script type="module" src="./services/mmwave-distance.js"></script>
+ </body>
+ </html>
+diff --git a/v2/crates/wifi-densepose-sensing-server/src/main.rs b/v2/crates/wifi-densepose-sensing-server/src/main.rs
+index d35f883..fbd74e5 100644
+--- a/v2/crates/wifi-densepose-sensing-server/src/main.rs
++++ b/v2/crates/wifi-densepose-sensing-server/src/main.rs
+@@ -1150,6 +1150,8 @@ struct NodeState {
+     latest_vitals: VitalSigns,
+     pub(crate) last_frame_time: Option<std::time::Instant>,
+     edge_vitals: Option<Esp32VitalsPacket>,
++    /// ADR-063: latest fused mmWave vitals packet (magic 0xC5110004).
++    edge_fused: Option<EdgeFusedVitalsPacket>,
+     /// ADR-110 §A0.12: Latest sync packet received from this node. When a
+     /// CSI frame arrives with byte 19 bit 4 set (`adr018_flags.ieee802154_sync_valid`),
+     /// the host can recover a mesh-aligned timestamp via
+@@ -1553,6 +1555,7 @@ impl NodeState {
+             latest_vitals: VitalSigns::default(),
+             last_frame_time: None,
+             edge_vitals: None,
++            edge_fused: None,
+             latest_sync: None,
+             latest_sync_at: None,
+             latest_accepted_csi_at: None,
+@@ -3046,6 +3049,7 @@ impl AppStateInner {
+             hr_buffer: VecDeque::with_capacity(8),
+             br_buffer: VecDeque::with_capacity(8),
+             edge_vitals: None,
++            edge_fused: None,
+             latest_wasm_events: None,
+             discovered_models: Vec::new(),
+             active_model_id: None,
+@@ -10885,6 +10889,246 @@ async fn mesh_endpoint(State(state): State<SharedState>) -> Json<serde_json::Val
+     }))
+ }
+ 
++/// Stable names for the `mmwave_type_t` enum. Mirrors
++/// `firmware/esp32-csi-node/main/mmwave_sensor.h`; 3/4 are the Hi-Link
++/// modules added for the RuView Vitals bench (LD2450 tracking, LD6002 vitals).
++fn mmwave_type_name(t: u8) -> &'static str {
++    match t {
++        1 => "mr60bha2",
++        2 => "ld2410",
++        3 => "ld2450",
++        4 => "ld6002",
++        99 => "mock",
++        _ => "none",
++    }
++}
++
++// ── Room-level mmWave fusion (RuView Vitals bench, extends ADR-063) ──────────
++//
++// ADR-063 defines one fused-vitals packet PER NODE. Real benches, however, run
++// several mmWave modules at once (e.g. an HLK-LD2450 24 GHz tracker for
++// distance/targets AND an HLK-LD6002 60 GHz module for heart/breath vitals).
++// Clients should not have to re-implement "pick the freshest, most confident
++// packet per field" — and the per-node WS messages would otherwise overwrite
++// each other in single-consumer UIs (an LD2450 packet with hr=0 clobbers a
++// fresh LD6002 heart rate).
++//
++// This aggregate is derived ON DEMAND from the per-node `edge_fused` packets —
++// no extra state, no dependency on model inference, `sensing_update` ticks or
++// `model_status`. It works with zero CSI nodes.
++
++/// A module packet older than this is not a fusion candidate.
++const MMWAVE_FUSION_FRESH_MS: u64 = 5000;
++/// Physically plausible radar distance band (any module), cm.
++const MMWAVE_DISTANCE_MIN_CM: f32 = 5.0;
++const MMWAVE_DISTANCE_MAX_CM: f32 = 600.0;
++/// HLK-LD6002 spec band for chest distance (HLK-LD6002 User Manual V1.0 §4.2:
++/// 0.4–1.5 m). Inside this band the LD6002 is the preferred distance source.
++const LD6002_DISTANCE_MIN_CM: f32 = 40.0;
++const LD6002_DISTANCE_MAX_CM: f32 = 150.0;
++
++/// One fresh per-node module observation.
++#[derive(Clone)]
++struct MmWaveObservation {
++    node_id: u8,
++    packet: EdgeFusedVitalsPacket,
++    age_ms: u64,
++}
++
++/// Build the room-level mmWave fusion aggregate from the freshest per-node
++/// packets. Modules always outrank CSI; CSI vitals appear only as an explicit
++/// `csi_fallback` when no module reports vitals.
++fn compute_mmwave_fusion(
++    node_states: &std::collections::HashMap<u8, NodeState>,
++    now: std::time::Instant,
++) -> serde_json::Value {
++    // Keep every module we have ever seen a fused packet from, and mark which
++    // ones are fresh. Values must stay visible when a sensor sleeps (distance
++    // is still the last real measurement), but freshness decides priority.
++    let mut all: Vec<MmWaveObservation> = Vec::new();
++    for (&id, ns) in node_states.iter() {
++        let Some(f) = ns.edge_fused.as_ref() else { continue };
++        let age_ms = ns
++            .last_frame_time
++            .map(|t| now.saturating_duration_since(t).as_millis() as u64)
++            .unwrap_or(u64::MAX);
++        all.push(MmWaveObservation { node_id: id, packet: f.clone(), age_ms });
++    }
++    all.sort_by_key(|o| o.node_id);
++    let fresh: Vec<MmWaveObservation> = all
++        .iter()
++        .filter(|o| o.age_ms <= MMWAVE_FUSION_FRESH_MS)
++        .cloned()
++        .collect();
++    // Priority pool: fresh modules first; if nothing is fresh, fall back to the
++    // last-known values (flagged via each sensor's `fresh` field).
++    let pool: &Vec<MmWaveObservation> = if fresh.is_empty() { &all } else { &fresh };
++
++    let sensors: Vec<serde_json::Value> = all
++        .iter()
++        .map(|o| {
++            serde_json::json!({
++                "node_id": o.node_id,
++                "sensor": mmwave_type_name(o.packet.mmwave_type),
++                "mmwave_type": o.packet.mmwave_type,
++                "age_ms": o.age_ms,
++                "fresh": o.age_ms <= MMWAVE_FUSION_FRESH_MS,
++                "hr_bpm": o.packet.mmwave_hr_bpm,
++                "br_bpm": o.packet.mmwave_br_bpm,
++                "distance_cm": o.packet.mmwave_distance_cm,
++                "targets": o.packet.mmwave_targets,
++                "confidence": o.packet.mmwave_confidence,
++                "presence": o.packet.flags & 0x01 != 0,
++            })
++        })
++        .collect();
++
++    // Vitals: only modules that actually report HR/BR (the LD2450 tracker
++    // legitimately sends 0/0 — it has no vitals capability). Rank by module
++    // confidence, then freshness.
++    let vitals = pool
++        .iter()
++        .filter(|o| o.packet.mmwave_hr_bpm > 0.0 || o.packet.mmwave_br_bpm > 0.0)
++        .min_by(|a, b| {
++            b.packet
++                .mmwave_confidence
++                .cmp(&a.packet.mmwave_confidence)
++                .then(a.age_ms.cmp(&b.age_ms))
++        })
++        .map(|o| {
++            serde_json::json!({
++                "hr_bpm": o.packet.mmwave_hr_bpm,
++                "br_bpm": o.packet.mmwave_br_bpm,
++                "source": mmwave_type_name(o.packet.mmwave_type),
++                "node_id": o.node_id,
++                "confidence": o.packet.mmwave_confidence,
++                "age_ms": o.age_ms,
++            })
++        });
++
++    // Distance: per-source values for every module with a plausible range,
++    // plus one fused pick. Inside the LD6002 spec band the LD6002 wins (it
++    // measures the chest distance that the vitals refer to); otherwise the
++    // first plausible tracker (e.g. LD2450, mm resolution) wins.
++    let per_source: Vec<serde_json::Value> = pool
++        .iter()
++        .filter(|o| {
++            o.packet.mmwave_distance_cm >= MMWAVE_DISTANCE_MIN_CM
++                && o.packet.mmwave_distance_cm <= MMWAVE_DISTANCE_MAX_CM
++        })
++        .map(|o| {
++            serde_json::json!({
++                "node_id": o.node_id,
++                "sensor": mmwave_type_name(o.packet.mmwave_type),
++                "distance_cm": o.packet.mmwave_distance_cm,
++            })
++        })
++        .collect();
++    let distance = pool
++        .iter()
++        .filter(|o| {
++            o.packet.mmwave_distance_cm >= MMWAVE_DISTANCE_MIN_CM
++                && o.packet.mmwave_distance_cm <= MMWAVE_DISTANCE_MAX_CM
++        })
++        .min_by(|a, b| {
++            let a_ld6002 = a.packet.mmwave_type == 4
++                && a.packet.mmwave_distance_cm >= LD6002_DISTANCE_MIN_CM
++                && a.packet.mmwave_distance_cm <= LD6002_DISTANCE_MAX_CM;
++            let b_ld6002 = b.packet.mmwave_type == 4
++                && b.packet.mmwave_distance_cm >= LD6002_DISTANCE_MIN_CM
++                && b.packet.mmwave_distance_cm <= LD6002_DISTANCE_MAX_CM;
++            b_ld6002.cmp(&a_ld6002).then(a.age_ms.cmp(&b.age_ms))
++        })
++        .map(|o| {
++            serde_json::json!({
++                "distance_cm": o.packet.mmwave_distance_cm,
++                "source": mmwave_type_name(o.packet.mmwave_type),
++                "node_id": o.node_id,
++                "age_ms": o.age_ms,
++                "per_source": per_source,
++            })
++        });
++
++    let presence = pool.iter().any(|o| o.packet.flags & 0x01 != 0)
++        || pool.iter().any(|o| o.packet.mmwave_targets > 0);
++
++    // Person count: the LD2450 is the authoritative tracker (up to 3 targets
++    // with x/y), so its count wins whenever it has a fresh packet. Other
++    // modules (LD6002 reports a single chest) stand in next, and CSI-derived
++    // counts are the last resort. `person_source` tells the UI which one spoke.
++    let csi_count = node_states
++        .iter()
++        .filter_map(|(_id, ns)| {
++            let ev = ns.edge_vitals.as_ref()?;
++            let age = ns
++                .last_frame_time
++                .map(|t| now.saturating_duration_since(t).as_millis() as u64)
++                .unwrap_or(u64::MAX);
++            (age <= MMWAVE_FUSION_FRESH_MS && ev.person_count_valid)
++                .then_some(ev.n_persons as u32)
++        })
++        .max();
++
++    let (person_count, person_source) = if let Some(o) =
++        pool.iter().find(|o| o.packet.mmwave_type == 3)
++    {
++        (o.packet.mmwave_targets as u32, "ld2450")
++    } else if let Some(o) = pool.iter().max_by_key(|o| {
++        o.packet.mmwave_targets.max(o.packet.n_persons)
++    }) {
++        (
++            o.packet.mmwave_targets.max(o.packet.n_persons) as u32,
++            mmwave_type_name(o.packet.mmwave_type),
++        )
++    } else if let Some(count) = csi_count {
++        (count, "csi")
++    } else {
++        (0, "none")
++    };
++
++    // CSI last resort: freshest edge-vitals packet with actual vitals content.
++    let csi_fallback = node_states
++        .iter()
++        .filter_map(|(&id, ns)| {
++            let ev = ns.edge_vitals.as_ref()?;
++            let age = ns
++                .last_frame_time
++                .map(|t| now.saturating_duration_since(t).as_millis() as u64)
++                .unwrap_or(u64::MAX);
++            (age <= MMWAVE_FUSION_FRESH_MS
++                && (ev.heartrate_bpm > 0.0 || ev.breathing_rate_bpm > 0.0))
++                .then(|| {
++                    serde_json::json!({
++                        "hr_bpm": ev.heartrate_bpm,
++                        "br_bpm": ev.breathing_rate_bpm,
++                        "node_id": id,
++                        "age_ms": age,
++                    })
++                })
++        })
++        .next();
++
++    let source = if vitals.is_some() || distance.is_some() {
++        "mmwave"
++    } else if csi_fallback.is_some() {
++        "csi"
++    } else {
++        "none"
++    };
++
++    serde_json::json!({
++        "source": source,
++        "stale": fresh.is_empty(),
++        "vitals": vitals,
++        "distance": distance,
++        "presence": presence,
++        "person_count": person_count,
++        "person_source": person_source,
++        "sensors": sensors,
++        "csi_fallback": csi_fallback,
++    })
++}
++
+ async fn nodes_endpoint(State(state): State<SharedState>) -> Json<serde_json::Value> {
+     let s = state.read().await;
+     let now = std::time::Instant::now();
+@@ -10929,18 +11173,46 @@ async fn nodes_endpoint(State(state): State<SharedState>) -> Json<serde_json::Va
+                 "person_count_valid": ns.edge_vitals
+                     .as_ref()
+                     .map(|vitals| vitals.person_count_valid),
++                // ADR-063: fused mmWave block (None for CSI-only nodes).
++                "mmwave": ns.edge_fused.as_ref().map(|f| serde_json::json!({
++                    "type": f.mmwave_type,
++                    "sensor": mmwave_type_name(f.mmwave_type),
++                    "hr_bpm": f.mmwave_hr_bpm,
++                    "br_bpm": f.mmwave_br_bpm,
++                    "distance_cm": f.mmwave_distance_cm,
++                    "targets": f.mmwave_targets,
++                    "confidence": f.mmwave_confidence,
++                    "fusion_confidence": f.fusion_confidence,
++                    "heart_rate_bpm": f.heartrate_bpm,
++                    "breathing_rate_bpm": f.breathing_rate_bpm,
++                    "presence": f.flags & 0x01 != 0,
++                    "motion_energy": f.motion_energy,
++                })),
+                 // Issue #1804: false means no --node-positions entry names this
+                 // node, so it reports the shared default position.
+                 "position_configured": s.node_positions_config.contains_key(&id),
+             })
+         })
+         .collect();
++    // Room-level mmWave fusion across ALL nodes (modules outrank CSI; works
++    // with zero CSI nodes and no model inference).
++    let mmwave_fusion = compute_mmwave_fusion(&s.node_states, now);
+     Json(serde_json::json!({
+         "nodes": nodes,
+         "total": nodes.len(),
++        "fusion": mmwave_fusion,
++        "sensors": mmwave_fusion["sensors"],
+     }))
+ }
+ 
++/// Room-level mmWave fusion aggregate (same shape as `nodes_endpoint`'s
++/// `fusion` field). Independent of CSI nodes and model inference.
++async fn mmwave_endpoint(State(state): State<SharedState>) -> Json<serde_json::Value> {
++    let s = state.read().await;
++    let now = std::time::Instant::now();
++    Json(compute_mmwave_fusion(&s.node_states, now))
++}
++
+ async fn info_page() -> Html<String> {
+     Html(
+         "<html><body>\
+@@ -12780,7 +13052,40 @@ async fn udp_receiver_task(
+                         fused.node_id, fused.breathing_rate_bpm, fused.heartrate_bpm,
+                         fused.mmwave_targets, fused.fusion_confidence,
+                     );
+-                    let s = state.write().await;
++                    let mut s = state.write().await;
++                    // ADR-063 server-side fusion mode: a standalone mmWave node
++                    // (MR60BHA2/LD6002, or LD2450 tracks) is a first-class node.
++                    // Persist its latest fused packet so /api/v1/nodes and REST
++                    // clients see the mmWave block instead of WS-only data.
++                    s.source = "esp32".to_string();
++                    s.last_esp32_frame = Some(std::time::Instant::now());
++                    let ns = s.node_states.entry(fused.node_id)
++                        .or_insert_with(NodeState::new);
++                    ns.last_frame_time = Some(std::time::Instant::now());
++                    if fused.person_count_valid {
++                        ns.prev_person_count = fused.n_persons as usize;
++                    }
++                    ns.current_motion_level = if fused.flags & 0x01 != 0 {
++                        "present_moving".to_string()
++                    } else {
++                        "absent".to_string()
++                    };
++                    ns.edge_fused = Some(fused.clone());
++                    // Room-level aggregate across ALL fresh module packets
++                    // (additive field; the documented per-packet fields above
++                    // are unchanged). Lets single-consumer UIs show fused
++                    // vitals/distance from multiple modules without one
++                    // node's packet clobbering another's.
++                    let room_fusion =
++                        compute_mmwave_fusion(&s.node_states, std::time::Instant::now());
++                    let room_person_count = room_fusion
++                        .get("person_count")
++                        .cloned()
++                        .unwrap_or(serde_json::Value::from(0));
++                    let room_person_source = room_fusion
++                        .get("person_source")
++                        .cloned()
++                        .unwrap_or(serde_json::Value::from("none"));
+                     if let Ok(json) = serde_json::to_string(&serde_json::json!({
+                         "type": "edge_fused_vitals",
+                         "node_id": fused.node_id,
+@@ -12797,6 +13102,9 @@ async fn udp_receiver_task(
+                             "confidence": fused.mmwave_confidence,
+                             "type": fused.mmwave_type,
+                         },
++                        "room_fusion": room_fusion,
++                        "person_count": room_person_count,
++                        "person_source": room_person_source,
+                         "motion_energy": fused.motion_energy,
+                         "presence_score": fused.presence_score,
+                         "timestamp_ms": fused.timestamp_ms,
+@@ -15144,6 +15452,8 @@ async fn main() {
+         .route("/api/v1/rf/vendors/:vendor/events", post(ingest_vendor_events))
+         // Per-node health endpoint
+         .route("/api/v1/nodes", get(nodes_endpoint))
++        // Room-level mmWave fusion (modules outrank CSI; zero-CSI safe)
++        .route("/api/v1/mmwave", get(mmwave_endpoint))
+         // ADR-110 iter 29 — per-node mesh sync state for HTTP clients.
+         .route("/api/v1/nodes/:id/sync", get(node_sync_endpoint))
+         .route("/api/v1/mesh", get(mesh_endpoint))

@@ -1,0 +1,30 @@
+﻿start
+vds=Running
+
+Microsoft DiskPart version 10.0.26100.1150
+
+Copyright (C) Microsoft Corporation.
+On computer: BEASTBROAK30
+
+Please wait while DiskPart scans your configuration...
+
+DiskPart has finished scanning your configuration.
+
+Disk 2 is now the selected disk.
+
+  Partition ###  Type              Size     Offset
+  -------------  ----------------  -------  -------
+  Partition 1    Primary            119 GB  1024 KB
+
+  Volume ###  Ltr  Label        Fs     Type        Size     Status     Info
+  ----------  ---  -----------  -----  ----------  -------  ---------  --------
+  Volume 0     C                NTFS   Partition    452 GB  Healthy    Boot    
+  Volume 1         SYSTEM       FAT32  Partition    800 MB  Healthy    System  
+  Volume 2                      NTFS   Partition    921 MB  Healthy    Hidden  
+  Volume 3                      NTFS   Partition     21 GB  Healthy    Hidden  
+  Volume 4         SAMSUNG_REC  FAT32  Partition   1024 MB  Healthy    Hidden  
+  Volume 5     D   WD_SSD       NTFS   Partition    931 GB  Healthy            
+
+Leaving DiskPart...
+part type=Logical letter=E mbrtype=6
+OK    0GB

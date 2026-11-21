@@ -1,0 +1,4 @@
+select disk 2
+offline disk
+detail disk
+exit

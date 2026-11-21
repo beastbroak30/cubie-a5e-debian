@@ -1,0 +1,7 @@
+select disk 2
+select partition 1
+format fs=exfat quick label=RADXA
+assign
+list partition
+list volume
+exit

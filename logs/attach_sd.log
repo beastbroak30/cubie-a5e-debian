@@ -1,0 +1,40 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120163625
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\attach_sd.ps1
+Process ID: 13384
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== BINDING & ATTACHING CARD READER (1-7) TO WSL ===
+usbipd: warning: A reboot may be required before the changes take effect.
+usbipd: info: Using WSL distribution 'Ubuntu-24.04' to attach; the device will be available in all WSL 2 distributions.
+usbipd: info: Loading vhci_hcd module.
+usbipd: info: Detected networking mode 'nat'.
+usbipd: info: Using IP address 172.20.128.1 to reach the host.
+Connected:
+BUSID  VID:PID    DEVICE                                                        STATE
+1-4    10c4:ea60  Silicon Labs CP210x USB to UART Bridge (COM6)                 Shared
+1-5    1c7a:05a5  EgisTec Touch Fingerprint Sensor                              Not shared
+1-6    2b7e:c813  1080p FHD Camera                                              Not shared
+1-7    0bda:0129  Realtek USB 2.0 Card Reader                                   Attached
+1-10   8087:0026  Intel(R) Wireless Bluetooth(R)                                Not shared
+
+Persisted:
+GUID                                  DEVICE
+2dc5b01e-874f-4ced-a959-90e18a0528fa  USB Serial Device (COM9), USB JTAG/serial debug unit
+74f9cda6-8ff1-486a-b073-feadac78a4aa  USB Serial Device (COM10), USB JTAG/serial debug unit
+**********************
+Windows PowerShell transcript end
+End time: 20261120163638
+**********************

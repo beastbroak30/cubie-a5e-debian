@@ -1,0 +1,7 @@
+ls: cannot access '/dev/spidev*': No such file or directory
+ls: cannot access '/dev/serial1': No such file or directory
+ls: cannot access '/dev/gpiomem*': No such file or directory
+/dev/i2c-31
+/dev/i2c-6
+/dev/ttyAS0
+/dev/ttyAS1

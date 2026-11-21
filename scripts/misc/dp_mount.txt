@@ -1,0 +1,5 @@
+select disk 2
+list volume
+select partition 1
+detail partition
+exit

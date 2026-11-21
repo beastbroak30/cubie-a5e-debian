@@ -1,0 +1,4 @@
+default via 10.55.0.2 dev usb0 proto static 
+default via 10.131.147.171 dev wlan0 proto dhcp src 10.131.147.34 metric 600 
+10.55.0.0/24 dev usb0 proto kernel scope link src 10.55.0.1 
+10.131.147.0/24 dev wlan0 proto kernel scope link src 10.131.147.34 metric 600 

@@ -1,0 +1,29 @@
+# build artifacts and dumps: never commit
+*.img
+*.img.gz
+*.img.xz
+*.bin
+*.iso
+*.deb
+
+# local scratch
+tmp/
+build/
+cache/
+chroot/
+rootfs/
+src/
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.exe
+*.msi
+*.dll

@@ -1,0 +1,54 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120164706
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\run_write_p3.ps1
+Process ID: 8264
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== FLASHING UPDATED ROOTFS (P3) TO DISK 2 ===
+Source size: 3946823168 bytes (3.68 GB)
+Target offset: 348127232
+Seek confirmed at offset: 348127232
+Flashing: 3.8% (144 MB / 3764 MB at 28 MB/s)
+Flashing: 7.9% (296 MB / 3764 MB at 28.5 MB/s)
+Flashing: 11.7% (440 MB / 3764 MB at 28.4 MB/s)
+Flashing: 15.5% (584 MB / 3764 MB at 28.4 MB/s)
+Flashing: 19.3% (728 MB / 3764 MB at 28.4 MB/s)
+Flashing: 23.2% (872 MB / 3764 MB at 28.4 MB/s)
+Flashing: 23.4% (880 MB / 3764 MB at 15.5 MB/s)
+Flashing: 27.2% (1024 MB / 3764 MB at 16.5 MB/s)
+Flashing: 31% (1168 MB / 3764 MB at 17.4 MB/s)
+Flashing: 34.9% (1312 MB / 3764 MB at 18.2 MB/s)
+Flashing: 38.7% (1456 MB / 3764 MB at 18.9 MB/s)
+Flashing: 42.5% (1600 MB / 3764 MB at 19.5 MB/s)
+Flashing: 46.3% (1744 MB / 3764 MB at 20 MB/s)
+Flashing: 50.4% (1896 MB / 3764 MB at 20.5 MB/s)
+Flashing: 50.6% (1904 MB / 3764 MB at 9.4 MB/s)
+Flashing: 54.6% (2056 MB / 3764 MB at 9.9 MB/s)
+Flashing: 58.7% (2208 MB / 3764 MB at 10.4 MB/s)
+Flashing: 62.5% (2352 MB / 3764 MB at 10.8 MB/s)
+Flashing: 66.3% (2496 MB / 3764 MB at 11.2 MB/s)
+Flashing: 70.1% (2640 MB / 3764 MB at 11.6 MB/s)
+Flashing: 74% (2784 MB / 3764 MB at 11.9 MB/s)
+Flashing: 77.8% (2928 MB / 3764 MB at 12.3 MB/s)
+Flashing: 81.8% (3080 MB / 3764 MB at 12.6 MB/s)
+Flashing: 85.7% (3224 MB / 3764 MB at 13 MB/s)
+Flashing: 89.7% (3376 MB / 3764 MB at 13.3 MB/s)
+Flashing: 93.5% (3520 MB / 3764 MB at 13.6 MB/s)
+Flashing: 97.6% (3672 MB / 3764 MB at 13.9 MB/s)
+Flashing finished in 267.2 s! Total written: 3946823168 bytes
+**********************
+Windows PowerShell transcript end
+End time: 20261120165135
+**********************

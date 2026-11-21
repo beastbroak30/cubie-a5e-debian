@@ -1,0 +1,73 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261120153633
+Username: BEASTBROAK30\akant
+RunAs User: BEASTBROAK30\akant
+Configuration Name: 
+Machine: BEASTBROAK30 (Microsoft Windows NT 10.0.26300.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\akant\AppData\Local\Temp\opencode\flash2.ps1
+Process ID: 20336
+PSVersion: 5.1.26100.9818
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9818
+BuildVersion: 10.0.26100.9818
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== FLASH START 2026-11-20T15:36:33.1804003+05:30 ===
+
+
+Number         : 2
+FriendlyName   : Generic- xD/SD/M.S.
+Size           : 128177930240
+PartitionStyle : MBR
+IsReadOnly     : False
+IsOffline      : False
+
+
+
+Image: D:\misc_prj\radxa_firmware\cubie-a5e-lite-arm64.img  bytes=4294967296
+IsReadOnly=false OK
+IsOffline=false OK
+Running diskpart clean on disk 2 ...
+
+Microsoft DiskPart version 10.0.26100.1150
+
+Copyright (C) Microsoft Corporation.
+On computer: BEASTBROAK30
+
+Disk 2 is now the selected disk.
+
+DiskPart succeeded in cleaning the disk.
+
+Please wait while DiskPart scans your configuration...
+
+DiskPart has finished scanning your configuration.
+diskpart exit=0
+
+
+Number         : 2
+PartitionStyle : MBR
+Size           : 128177930240
+
+
+
+Opening \\.\PhysicalDrive2 for raw write...
+PS>TerminatingError(): "Exception calling "Write" with "3" argument(s): "The device is not ready.
+""
+Exception calling "Write" with "3" argument(s): "The device is not ready.
+"
+Exception calling "Write" with "3" argument(s): "The device is not ready.
+"
+At C:\Users\akant\AppData\Local\Temp\opencode\flash2.ps1:47 char:9
++         $fsOut.Write($buf, 0, $n)
++         ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : IOException
+
+**********************
+Windows PowerShell transcript end
+End time: 20261120153640
+**********************
