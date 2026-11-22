@@ -1,0 +1,7 @@
+[Unit]
+Description=Cubie A5E OTA confirm (keep staged firmware, drop old slot)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cubie-ota confirm

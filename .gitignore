@@ -27,3 +27,6 @@ desktop.ini
 *.exe
 *.msi
 *.dll
+
+# OTA firmware bundles are release assets, never commits
+*.tar.zst

@@ -1,0 +1,6 @@
+{
+  "version": "1.1.0",
+  "dtb": "sun55i-a527-cubie-a5e.dtb",
+  "asset": "cubie-a5e-firmware.tar.zst",
+  "sha256": "32ffd1bff48df073cdcbf0be35ca5cf9e14fdc342524a1514311f28202fd97ca"
+}

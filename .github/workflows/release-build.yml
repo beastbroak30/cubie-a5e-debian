@@ -1,4 +1,4 @@
-name: Release Build & Integrity CI
+name: Checks & Release
 
 on:
   push:
@@ -6,92 +6,119 @@ on:
       - main
     tags:
       - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  security-and-integrity:
-    name: Security, Lint & Integrity Checks
+  checks:
+    name: Lint, syntax and secret audit
     runs-on: ubuntu-latest
-    outputs:
-      is_release: ${{ steps.check_release.outputs.is_release }}
-      version_tag: ${{ steps.check_release.outputs.version_tag }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check Commit Message for Release Tag
-        id: check_release
-        run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          echo "Commit message: $COMMIT_MSG"
-          if echo "$COMMIT_MSG" | grep -Eq '^[vV][0-9]+\.[0-9]+\.[0-9]+ \(release\)'; then
-            TAG=$(echo "$COMMIT_MSG" | grep -Eo '^[vV][0-9]+\.[0-9]+\.[0-9]+' | head -n1)
-            echo "Release commit detected with tag: $TAG"
-            echo "is_release=true" >> $GITHUB_OUTPUT
-            echo "version_tag=$TAG" >> $GITHUB_OUTPUT
-          else
-            echo "Standard commit (not a release commit)."
-            echo "is_release=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Secret Leak Audit (Gitleaks)
+      - name: Secret leak audit (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: false
 
-      - name: Verify Pin Map JSON Integrity
+      - name: Pin map JSON integrity
         run: |
-          python3 -c "import json; data=json.load(open('docs/cubie-a5e-pinmap.json')); assert 'pins' in data; assert len(data['pins']) == 40; print('Pinmap JSON: OK')"
+          python3 - <<'PY'
+          import json
+          data = json.load(open('docs/cubie-a5e-pinmap.json'))
+          assert 'pins' in data, 'pinmap has no pins'
+          assert len(data['pins']) == 40, 'pinmap must describe 40 header pins'
+          print('pinmap: 40 pins, OK')
+          PY
 
-      - name: Shell Scripts Syntax Check
+      - name: Shell syntax (bash -n) for every tracked script
         run: |
-          find scripts/ -type f -name "*.sh" -print0 | xargs -0 -n1 bash -n
-          echo "Bash syntax validation: OK"
+          set -e
+          mapfile -t files < <(git ls-files '*.sh')
+          for f in "${files[@]}"; do
+            bash -n "$f" || { echo "syntax error: $f"; exit 1; }
+          done
+          echo "bash -n: ${#files[@]} files OK"
 
-      - name: Check File Permissions & Encoding
+      - name: Python syntax for cubie-ota
         run: |
-          find scripts/ -name "*.sh" -exec test -r {} \;
-          echo "Integrity check: PASS"
+          python3 -m py_compile ota/cubie-ota
+          echo "cubie-ota compiles"
 
-  build-and-release:
-    name: Build Image & Create GitHub Release
-    needs: security-and-integrity
-    if: needs.security-and-integrity.outputs.is_release == 'true'
+      - name: systemd unit headers
+        run: |
+          for u in ota/*.service ota/*.timer; do
+            grep -q '^\[Unit\]' "$u" || { echo "missing [Unit] in $u"; exit 1; }
+            grep -q '^\[\(Service\|Timer\)\]' "$u" || { echo "missing section in $u"; exit 1; }
+          done
+          echo "unit files OK"
+
+      - name: apt hook and OTA config sanity
+        run: |
+          test -f ota/99cubie-ota
+          grep -q 'cubie-ota check' ota/99cubie-ota
+          grep -q '^repo=' ota/cubie-ota.conf
+          echo "ota config OK"
+
+  release:
+    name: Create release (tag builds only)
+    needs: checks
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up QEMU for arm64 emulation
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Install Host Build Dependencies
+      # The image (933 MB gz) and the firmware bundle (197 MB) are host-built and
+      # uploaded from the build machine with `gh release upload`: this job only
+      # validates the tracked manifest and opens the release.
+      - name: Verify OTA manifest matches the tag
         run: |
-          sudo apt-get update
-          sudo apt-get install -y debootstrap binfmt-support qemu-user-static parted u-boot-tools dosfstools
+          set -e
+          tag="${GITHUB_REF_NAME#v}"
+          f="output/v$tag/cubie-ota.json"
+          test -f "$f" || { echo "missing $f"; exit 1; }
+          python3 - "$f" "$tag" <<'PY'
+          import json, sys
+          m = json.load(open(sys.argv[1]))
+          tag = sys.argv[2]
+          assert m['version'] == tag, f"manifest version {m['version']} != {tag}"
+          assert len(m['sha256']) == 64, 'sha256 must be 64 hex chars'
+          assert m['asset'].endswith('.tar.zst')
+          print(f"manifest ok: {m['version']} {m['sha256'][:16]}")
+          PY
 
-      - name: Pack / Verify Staged Image Asset
-        run: |
-          echo "Verifying image release assets..."
-          test -f output/cubie-a5e-lite-arm64.img.sha256 || true
-
-      - name: Draft GitHub Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.security-and-integrity.outputs.version_tag }}
-          name: "Radxa Cubie A5E Minimal Debian 12 (${{ needs.security-and-integrity.outputs.version_tag }})"
-          body_path: FLASHING.md
+          tag_name: ${{ github.ref_name }}
+          name: "Radxa Cubie A5E - Debian 12 arm64 ${{ github.ref_name }}"
+          body_path: docs/OTA.md
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
           files: |
-            output/*.sha256
-            docs/cubie-a5e-pinmap.json
-            FLASHING.md
+            output/v*/cubie-ota.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remind about host-side assets
+        run: |
+          cat <<EOF
+          Release ${GITHUB_REF_NAME} created.
+
+          Upload the binaries from the build host (GitHub caps each asset at 2 GB,
+          so the 4 GiB .img is never attached, only the .img.gz):
+
+            gh release upload ${GITHUB_REF_NAME} \\
+              output/cubie-a5e-lite-arm64.img.gz \\
+              output/cubie-a5e-lite-arm64.img.gz.sha256 \\
+              output/v${GITHUB_REF_NAME#v}/cubie-a5e-firmware.tar.zst \\
+              output/v${GITHUB_REF_NAME#v}/cubie-ota.json --clobber
+          EOF

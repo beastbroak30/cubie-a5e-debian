@@ -23,8 +23,10 @@ overlay-driven buses (I2C / SPI / UART / PWM).
 on first boot. It is **not stored in this repository**; it ships as a release asset.
 
 ```
-sha256  dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866
+sha256  52051ee0817e01195f75ffe6ad07ddfe295529003a4efeceac444a57442fecb6
 ```
+
+(`.img.gz` asset: `cca7a617dc6121e2a3a39e23bb855f5b96f42721e6ee0fa1555a59014a8140f3`)
 
 Reproducible from `scripts/build/` against the sources listed under *Source offer* below.
 
@@ -37,8 +39,9 @@ Reproducible from `scripts/build/` against the sources listed under *Source offe
 | USB network | CDC-NCM, board `10.55.0.1/24`, DHCP server for the host |
 | Wi-Fi | AIC8800D80, firmware in `/lib/firmware/aic8800d80` |
 | BLE | `hci0` over `ttyAS1`, BD `A8:B5:8E:0D:73:B8` |
-| Swap | zram, 50 % of RAM (`PERCENT=50` in `/etc/default/zramswap`) |
-| Idle | 116 MB RAM used, 1.5 GB disk, load 0.00, 15.6 s boot |
+| Swap | zram, 50 % of RAM (`PERCENT=50`, `ALGO=zstd`) |
+| Idle | 116 MB RAM used, 1.5 GB disk, load 0.00, **7.0 s boot** (3.6 s kernel + 3.4 s userspace) |
+| Updates | `cubie-ota`, GitHub-release OTA with rollback, see [docs/OTA.md](docs/OTA.md) |
 
 See [FLASHING.md](FLASHING.md) for the flashing procedure and
 [docs/](docs) for the pin map, the reference image layout, and the on-board manifest.
@@ -61,11 +64,29 @@ logs/                     captured output of past runs
 ## Status
 
 Working: boot, USB console, USB networking, SSH, Wi-Fi, BLE, Ethernet, zram, NTP,
-first-boot rootfs expand.
+first-boot rootfs expand, OTA update with rollback.
 
 Not yet validated: the RPi-compatibility layer. It is specified in
 [docs/RPI-COMPAT-PLAN.md](docs/RPI-COMPAT-PLAN.md); GPIO pins are mapped and verified,
 the `RPi.GPIO` shim and the bus overlays are not built yet.
+
+## Updates (OTA)
+
+Firmware updates ride GitHub releases. `cubie-ota` compares the installed version with the
+latest release manifest (`cubie-ota.json`), downloads `cubie-a5e-firmware.tar.zst`, verifies
+its SHA256, stages it in `/boot/ota/<version>`, and switches the extlinux label.
+
+```sh
+sudo apt update          # the apt hook runs the update check
+cubie-ota check          # manual check
+cubie-ota apply          # stage + switch, reboot needed
+cubie-ota status
+cubie-ota rollback
+```
+
+A new firmware counts as pending until `cubie-ota-confirm.timer` validates the boot. Three
+failed boot attempts roll back to the previous slot before it is deleted. Design, release
+format and limits: [docs/OTA.md](docs/OTA.md).
 
 ## Contributing
 

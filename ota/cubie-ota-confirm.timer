@@ -1,0 +1,11 @@
+[Unit]
+Description=Cubie A5E OTA confirm timer (mark staged firmware good after a clean boot)
+DefaultDependencies=no
+
+[Timer]
+OnBootSec=90
+AccuracySec=10s
+Unit=cubie-ota-confirm.service
+
+[Install]
+WantedBy=timers.target

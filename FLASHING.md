@@ -8,14 +8,18 @@ request; see `README.md`. The build itself is reproducible from `scripts/build/`
 | File | Purpose |
 |---|---|
 | `cubie-a5e-lite-arm64.img` | 4 GiB image to flash (4,294,967,296 bytes) |
+| `cubie-a5e-lite-arm64.img.gz` | same image, gzip (-9), 933 MB |
 | `cubie-a5e-lite-arm64.img.sha256` | checksum |
 | balenaEtcher 2.1.9 Setup | flashing tool, from https://etcher.balena.io |
 
 Current image SHA256:
 
 ```
-dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866  cubie-a5e-lite-arm64.img
+52051ee0817e01195f75ffe6ad07ddfe295529003a4efeceac444a57442fecb6  cubie-a5e-lite-arm64.img
+cca7a617dc6121e2a3a39e23bb855f5b96f42721e6ee0fa1555a59014a8140f3  cubie-a5e-lite-arm64.img.gz
 ```
+
+Etcher accepts the `.gz` directly: it decompresses while writing and validates the result.
 
 ## Step 1 — verify the image
 
