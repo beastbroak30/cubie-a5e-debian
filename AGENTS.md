@@ -306,8 +306,8 @@ Backups taken 2026-11-21 before any further work:
 | `backups/cubie-a5e-lite-arm64-2026-11-21.img.gz` (792 MB) | `7385b001d407913f196455eabfc8c7c208ea04c0a84f3d3ac971c7b27697c9f1` |
 | `output/cubie-a5e-lite-arm64.img` (after license + attribution patch) | `dc0424cd067fad67aed17e97a4071d3b9397a87472115c3943277c310b90a6df` |
 | `output/cubie-a5e-lite-arm64.img` (after locale patch) | `dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866` |
-| `output/cubie-a5e-lite-arm64.img` (v1.1.0: fast boot + OTA) | `52051ee0817e01195f75ffe6ad07ddfe295529003a4efeceac444a57442fecb6` |
-| `output/cubie-a5e-lite-arm64.img.gz` (v1.1.0, 933 MB) | `cca7a617dc6121e2a3a39e23bb855f5b96f42721e6ee0fa1555a59014a8140f3` |
+| `output/cubie-a5e-lite-arm64.img` (v1.1.0: fast boot + OTA) | `a6dbc27f9a47051ce1d0c963e03531d0d34458f2f6afd31ec78d84263c8c16d2` |
+| `output/cubie-a5e-lite-arm64.img.gz` (v1.1.0, 933 MB) | `d3a03463e81f9be000c413847e263eb41a644037f1eabd4f0dd071e223a7d559` |
 
 Author of record: **beastbroak30** — kernel and firmware development. Credit is inside the
 image (`/usr/share/doc/cubie-a5e-debian/AUTHORS` and `NOTICE`), in `README.md` and in

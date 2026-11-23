@@ -23,10 +23,10 @@ overlay-driven buses (I2C / SPI / UART / PWM).
 on first boot. It is **not stored in this repository**; it ships as a release asset.
 
 ```
-sha256  52051ee0817e01195f75ffe6ad07ddfe295529003a4efeceac444a57442fecb6
+sha256  a6dbc27f9a47051ce1d0c963e03531d0d34458f2f6afd31ec78d84263c8c16d2
 ```
 
-(`.img.gz` asset: `cca7a617dc6121e2a3a39e23bb855f5b96f42721e6ee0fa1555a59014a8140f3`)
+(`.img.gz` asset: `d3a03463e81f9be000c413847e263eb41a644037f1eabd4f0dd071e223a7d559`)
 
 Reproducible from `scripts/build/` against the sources listed under *Source offer* below.
 

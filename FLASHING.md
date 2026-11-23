@@ -15,8 +15,8 @@ request; see `README.md`. The build itself is reproducible from `scripts/build/`
 Current image SHA256:
 
 ```
-52051ee0817e01195f75ffe6ad07ddfe295529003a4efeceac444a57442fecb6  cubie-a5e-lite-arm64.img
-cca7a617dc6121e2a3a39e23bb855f5b96f42721e6ee0fa1555a59014a8140f3  cubie-a5e-lite-arm64.img.gz
+a6dbc27f9a47051ce1d0c963e03531d0d34458f2f6afd31ec78d84263c8c16d2  cubie-a5e-lite-arm64.img
+d3a03463e81f9be000c413847e263eb41a644037f1eabd4f0dd071e223a7d559  cubie-a5e-lite-arm64.img.gz
 ```
 
 Etcher accepts the `.gz` directly: it decompresses while writing and validates the result.
