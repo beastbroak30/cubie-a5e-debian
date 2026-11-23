@@ -1,5 +1,10 @@
 [Unit]
-Description=Cubie A5E OTA boot guard (count attempt, roll back after N failures)
+Description=Cubie A5E OTA boot guard (count attempts, roll back after N failures)
+# Early boot, before anything else can look at /boot/ota. DefaultDependencies=no
+# is required: the default would add After=basic.target, which would contradict
+# Before=basic.target below and make a cycle. This unit is pulled by
+# sysinit.target and never by multi-user.target, so nothing after it waits
+# longer than a local state-file update.
 DefaultDependencies=no
 After=local-fs.target
 Before=basic.target shutdown.target
@@ -8,8 +13,11 @@ Conflicts=shutdown.target
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/cubie-ota boot-guard
+# Stays "started" so cubie-ota-confirm.service can order After= this unit.
 RemainAfterExit=yes
-TimeoutStartSec=60
+# Local file I/O plus at most one systemctl reboot. 30 s is already generous;
+# a stuck guard must not hold up sysinit.
+TimeoutStartSec=30
 
 [Install]
 WantedBy=sysinit.target

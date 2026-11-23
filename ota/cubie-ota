@@ -6,14 +6,21 @@ is never touched: it comes from Radxa's image and stays where it is.
 
 Safety model: the new firmware boots first from its own slot. The previous slot
 is kept until a full boot reaches multi-user and stays up for a grace period
-(cubie-ota-confirm.service). If userspace never confirms within MAX_ATTEMPTS
-boots, cubie-ota-boot.service restores the previous slot and reboots.
+(cubie-ota-confirm.timer, 90 s after boot). If userspace never confirms within
+MAX_ATTEMPTS boots, cubie-ota-boot.service restores the previous slot and
+reboots once.
+
+This board has no persistent U-Boot environment (no fw_setenv), so the counter
+and the rollback live entirely in userspace.
 """
 
 import argparse
+import errno
 import hashlib
+import http.client
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +35,12 @@ STATE = os.path.join(STATE_DIR, "state.json")
 SLOT_ROOT = "/boot/ota"
 EXTLINUX = "/boot/extlinux/extlinux.conf"
 MODULES = "/lib/modules"
+BOOT = "/boot"
+DTB_DEFAULT = "sun55i-a527-cubie-a5e.dtb"
+VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+# HTTPError is a URLError subclass; json errors are ValueError.
+NET_ERRORS = (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError)
+
 DEFAULTS = {
     "repo": "beastbroak30/cubie-a5e-debian",
     "asset": "cubie-a5e-firmware.tar.zst",
@@ -36,6 +49,9 @@ DEFAULTS = {
     "max_attempts": "3",
     "keep_slots": "2",
     "arch": "arm64",
+    "token_file": "/etc/cubie-ota.token",
+    "bundle_mb": "200",
+    "slot_mb": "210",
 }
 
 
@@ -48,9 +64,23 @@ def conf():
                 if line and not line.startswith("#") and "=" in line:
                     k, v = line.split("=", 1)
                     cfg[k.strip()] = v.strip().strip('"')
-    except FileNotFoundError:
+    except OSError:
         pass
     return cfg
+
+
+def _int(cfg, key, default):
+    try:
+        return int(str(cfg.get(key, default)).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def installed_version(cfg):
@@ -58,8 +88,8 @@ def installed_version(cfg):
         with open(cfg["release_file"]) as f:
             for line in f:
                 if line.startswith("VERSION="):
-                    return line.split("=", 1)[1].strip()
-    except FileNotFoundError:
+                    return line.split("=", 1)[1].strip().strip('"\'')
+    except OSError:
         pass
     return "0.0.0"
 
@@ -73,18 +103,31 @@ def sha256_file(path):
 
 
 def load_state():
+    """Return (state, state_file_was_usable).
+
+    The second value is False when state.json is missing or unreadable, so the
+    caller knows it cannot trust "previous" and must fall back to the shipped
+    /boot/Image layout instead of guessing.
+    """
+    st, ok = {}, False
     try:
         with open(STATE) as f:
-            st = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        st = {}
-    st.setdefault("version", installed_version(conf()))
-    st.setdefault("slot", None)
-    st.setdefault("pending", False)
-    st.setdefault("pending_version", None)
-    st.setdefault("attempts", 0)
-    st.setdefault("previous", None)
-    return st
+            data = json.load(f)
+        if isinstance(data, dict):
+            st, ok = data, True
+    except (OSError, ValueError):
+        pass
+    cfg = conf()
+    if not isinstance(st.get("version"), str) or not st.get("version"):
+        st["version"] = installed_version(cfg)
+    for key in ("slot", "previous", "pending_version"):
+        if not isinstance(st.get(key), str) or not st.get(key):
+            st[key] = None
+    st["pending"] = bool(st.get("pending"))
+    st["attempts"] = _as_int(st.get("attempts"))
+    # rolls back at most once per staged update: hard cap against reboot loops
+    st["rollbacks"] = _as_int(st.get("rollbacks"))
+    return st, ok
 
 
 def save_state(st):
@@ -92,66 +135,292 @@ def save_state(st):
     tmp = STATE + ".tmp"
     with open(tmp, "w") as f:
         json.dump(st, f, indent=2, sort_keys=True)
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, STATE)
 
 
-def api(url):
-    req = urllib.request.Request(url, headers={
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "cubie-ota",
-    })
+def _headers(cfg=None, accept=None):
+    h = {"User-Agent": "cubie-ota"}
+    if accept:
+        h["Accept"] = accept
+    path = (cfg or {}).get("token_file", DEFAULTS["token_file"])
+    try:
+        with open(path) as f:
+            token = f.read().strip()
+        if token:
+            # raises the unauthenticated 60 req/h limit to 5000 req/h
+            h["Authorization"] = "Bearer " + token
+    except OSError:
+        pass
+    return h
+
+
+def api(url, cfg=None):
+    req = urllib.request.Request(url, headers=_headers(cfg, "application/vnd.github+json"))
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.load(r)
 
 
-def gh_get(url, dest):
-    req = urllib.request.Request(url, headers={"User-Agent": "cubie-ota"})
+def gh_get(url, dest, cfg=None):
+    req = urllib.request.Request(url, headers=_headers(cfg))
     with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f, 1 << 20)
 
 
 def latest_release(cfg):
-    return api("https://api.github.com/repos/%s/releases/latest" % cfg["repo"])
+    return api("https://api.github.com/repos/%s/releases/latest" % cfg["repo"], cfg)
 
 
 def find_asset(release, name):
-    for a in release.get("assets", []):
-        if a["name"] == name:
+    for a in release.get("assets") or []:
+        if isinstance(a, dict) and a.get("name") == name:
             return a
     return None
 
 
-def cmd_status(_args):
-    cfg, st = conf(), load_state()
-    print("installed version : %s" % st["version"])
-    print("boot slot         : %s" % st["slot"])
-    print("pending           : %s" % (st["pending_version"] if st["pending"] else "no"))
-    print("previous slot     : %s" % st["previous"])
-    print("boot attempts     : %s / %s" % (st["attempts"], cfg["max_attempts"]))
-    print("slots on disk     : %s" % ", ".join(sorted(os.listdir(SLOT_ROOT)))
-          if os.path.isdir(SLOT_ROOT) else "slots on disk     : none")
-    return 0
+def normalize_tag(tag):
+    """'v1.2.3' -> '1.2.3'. Anything that is not X.Y.Z -> None."""
+    if not isinstance(tag, str):
+        return None
+    t = tag.strip()
+    if t[:1] in ("v", "V"):
+        t = t[1:]
+    return t if VERSION_RE.match(t) else None
 
 
-def cmd_check(args):
-    cfg, st = conf(), load_state()
+def resolve_version(tag_raw, manifest_version):
+    """Release tag and manifest timestamp must agree; both must be X.Y.Z."""
+    tag = normalize_tag(tag_raw)
+    man = normalize_tag(manifest_version) if manifest_version else None
+    if tag and man and tag != man:
+        raise ValueError("manifest version %s disagrees with release tag %s"
+                         % (man, tag_raw))
+    ver = man or tag
+    if not ver:
+        raise ValueError("release %r has no X.Y.Z version" % (tag_raw,))
+    return ver
+
+
+def list_slots():
+    """Slot dir names, newest first. A missing /boot/ota is not an error."""
     try:
-        rel = latest_release(cfg)
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
-        print("cubie-ota: update check failed: %s" % e)
-        return 0 if args.apt else 1
-    tag = rel.get("tag_name", "").lstrip("vV")
-    man = find_asset(rel, cfg["manifest"])
-    if not man:
-        print("cubie-ota: release %s has no %s" % (tag, cfg["manifest"]))
-        return 0
-    if tag == st["version"]:
-        print("cubie-ota: up to date (%s)" % tag)
-        return 0
-    print("cubie-ota: %s available (installed %s)" % (tag, st["version"]))
-    if args.apt:
-        print("cubie-ota: run 'sudo cubie-ota apply' to stage it, or reboot after apply")
-    return 0
+        names = os.listdir(SLOT_ROOT)
+    except OSError:
+        return []
+    out = []
+    for name in names:
+        if name.startswith(".") or name.endswith(".old") or name.endswith(".tmp"):
+            continue
+        p = os.path.join(SLOT_ROOT, name)
+        if os.path.isdir(p) and not os.path.islink(p):
+            out.append(name)
+
+    def mtime(name):
+        try:
+            return os.path.getmtime(os.path.join(SLOT_ROOT, name))
+        except OSError:
+            return 0
+
+    out.sort(key=mtime, reverse=True)
+    return out
+
+
+def slot_ok(name):
+    """A slot is only bootable with a non-empty Image."""
+    if not isinstance(name, str) or not name:
+        return False
+    img = os.path.join(SLOT_ROOT, name, "Image")
+    try:
+        return os.path.isfile(img) and os.path.getsize(img) > 0
+    except OSError:
+        return False
+
+
+def slot_fdt(name):
+    slot = os.path.join(SLOT_ROOT, name)
+    try:
+        for f in sorted(os.listdir(slot)):
+            if f.endswith(".dtb"):
+                return os.path.join(slot, f)
+    except OSError:
+        pass
+    fb = os.path.join(BOOT, DTB_DEFAULT)
+    return fb if os.path.isfile(fb) else None
+
+
+def factory_fdt():
+    fb = os.path.join(BOOT, DTB_DEFAULT)
+    if os.path.isfile(fb):
+        return fb
+    try:
+        for f in sorted(os.listdir(BOOT)):
+            if f.endswith(".dtb"):
+                return os.path.join(BOOT, f)
+    except OSError:
+        pass
+    return None
+
+
+def current_extlinux_slot():
+    """Slot name extlinux currently boots, or None for /boot/Image."""
+    try:
+        with open(EXTLINUX) as f:
+            text = f.read()
+    except OSError:
+        return None
+    for line in text.splitlines():
+        words = line.split()
+        if len(words) >= 2 and words[0] in ("linux", "kernel"):
+            prefix = SLOT_ROOT.rstrip("/") + "/"
+            if words[1].startswith(prefix):
+                return words[1][len(prefix):].split("/")[0]
+    return None
+
+
+def root_partuuid():
+    """PARTUUID of the root filesystem. PARTUUID (not UUID) so no initrd is needed."""
+    try:
+        with open("/proc/cmdline") as f:
+            for token in f.read().split():
+                if token.startswith("root=PARTUUID="):
+                    val = token.split("=", 1)[1].strip('"')
+                    if val:
+                        return val
+    except OSError:
+        pass
+    src = ""
+    try:
+        out = subprocess.run(["findmnt", "-no", "SOURCE", "/"],
+                             capture_output=True, text=True)
+        src = out.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if not src:
+        try:
+            with open("/proc/self/mounts") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[1] == "/":
+                        src = parts[0]
+                        break
+        except OSError:
+            pass
+    if not src:
+        raise RuntimeError("cannot determine the root filesystem device")
+    try:
+        out = subprocess.run(["blkid", "-s", "PARTUUID", "-o", "value", src],
+                             capture_output=True, text=True)
+    except (OSError, subprocess.SubprocessError):
+        raise RuntimeError("cannot run blkid to read the PARTUUID of %s" % src)
+    val = out.stdout.strip()
+    if not val:
+        raise RuntimeError("cannot read the PARTUUID of %s" % src)
+    return val
+
+
+EXTLINUX_TMPL = (
+    "default l0\n"
+    "menu title Radxa Cubie A5E Boot Options\n"
+    "prompt 0\n"
+    "timeout 0\n"
+    "\n"
+    "label l0\n"
+    "    menu label Debian GNU/Linux 12 (bookworm) %(ver)s\n"
+    "    linux %(linux)s\n"
+    "    fdt %(fdt)s\n"
+    "    append %(args)s\n"
+)
+
+# kernel mounts the rootfs itself, so root must be PARTUUID or /dev/*,
+# never UUID=: that needs an initrd.
+BOOTARGS = (
+    "root=PARTUUID=%(root)s console=ttyAS0,115200n8 rootwait rw rootfstype=ext4 "
+    "quiet loglevel=3 systemd.show_status=0 udev.log_level=3 audit=0 nowatchdog "
+    "nmi_watchdog=0 panic=10 clk_ignore_unused mac_addr=${mac} mac1_addr=${mac1} "
+    "coherent_pool=2M irqchip.gicv3_pseudo_nmi=0 cgroup_enable=cpuset "
+    "cgroup_memory=1 cgroup_enable=memory swapaccount=1 kasan=off"
+)
+
+
+def write_extlinux(version, linux_path, fdt_path):
+    """Point extlinux at linux_path/fdt_path atomically (one rename, fsync'd)."""
+    args = BOOTARGS % {"root": root_partuuid()}
+    text = EXTLINUX_TMPL % {"ver": version, "linux": linux_path, "fdt": fdt_path,
+                            "args": args}
+    directory = os.path.dirname(EXTLINUX)
+    os.makedirs(directory, exist_ok=True)
+    tmp = EXTLINUX + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, EXTLINUX)
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
+
+
+def write_slot_extlinux(name):
+    """Boot from /boot/ota/<name> using that slot's own dtb."""
+    fdt = slot_fdt(name)
+    if not fdt:
+        raise RuntimeError("no dtb for slot %s" % name)
+    write_extlinux(name, os.path.join(SLOT_ROOT, name, "Image"), fdt)
+
+
+def write_factory_extlinux():
+    """Boot the shipped /boot/Image + /boot/<dtb>: the known-good baseline."""
+    img = os.path.join(BOOT, "Image")
+    fdt = factory_fdt()
+    if not (os.path.isfile(img) and fdt):
+        return False
+    write_extlinux("recovery", img, fdt)
+    return True
+
+
+def install_modules(slot_dir):
+    """Extract <slot>/modules.tar.zst into /lib/modules. Returns True on success."""
+    tar = os.path.join(slot_dir, "modules.tar.zst")
+    if not os.path.exists(tar):
+        print("cubie-ota: warning: %s has no modules.tar.zst" % slot_dir,
+              file=sys.stderr)
+        return False
+    os.makedirs(STATE_DIR, exist_ok=True)
+    stage = tempfile.mkdtemp(prefix="modstage-", dir=STATE_DIR)
+    running = os.uname().release
+    try:
+        subprocess.run(["tar", "--zstd", "-xf", tar, "-C", stage], check=True)
+        src = os.path.join(stage, "lib", "modules")
+        if not os.path.isdir(src):
+            print("cubie-ota: warning: %s carries no lib/modules" % tar,
+                  file=sys.stderr)
+            return False
+        os.makedirs(MODULES, exist_ok=True)
+        for kver in sorted(os.listdir(src)):
+            s = os.path.join(src, kver)
+            if not os.path.isdir(s):
+                continue
+            d = os.path.join(MODULES, kver)
+            if os.path.isdir(d) and not os.path.islink(d):
+                if kver == running:
+                    # never delete the tree the running kernel may still load from
+                    shutil.copytree(s, d, dirs_exist_ok=True)
+                    continue
+                shutil.rmtree(d, ignore_errors=True)
+            shutil.move(s, d)
+        return True
+    except (OSError, subprocess.SubprocessError) as e:
+        print("cubie-ota: warning: cannot install modules from %s: %s" % (tar, e),
+              file=sys.stderr)
+        return False
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
 
 
 def extract_bundle(path, dest):
@@ -159,139 +428,377 @@ def extract_bundle(path, dest):
         for m in tf.getmembers():
             if m.name.startswith("/") or ".." in m.name.split("/"):
                 raise RuntimeError("unsafe path in bundle: %s" % m.name)
-        tf.extractall(dest)
+            if not (m.isreg() or m.isdir()):
+                raise RuntimeError("unsupported member in bundle: %s" % m.name)
+        for m in tf.getmembers():
+            tf.extract(m, dest)
 
 
-def root_partuuid():
-    """PARTUUID of the root filesystem. PARTUUID (not UUID) so no initrd is needed."""
-    src = subprocess.run(["findmnt", "-no", "SOURCE", "/"],
-                         capture_output=True, text=True).stdout.strip()
-    if not src:
-        src = "/dev/mmcblk0p3"
-    out = subprocess.run(["blkid", "-s", "PARTUUID", "-o", "value", src],
-                         capture_output=True, text=True, check=True).stdout.strip()
-    if not out:
-        raise RuntimeError("cannot read PARTUUID of %s" % src)
-    return out
+def stage_bundle(bundle_path, staging, dtb_name):
+    """Extract and validate the bundle outside /boot. Returns the Image path."""
+    os.makedirs(staging, exist_ok=True)
+    extract_bundle(bundle_path, staging)
+    img = os.path.join(staging, "Image")
+    if not (os.path.isfile(img) and os.path.getsize(img) > 0):
+        raise RuntimeError("bundle has no usable Image")
+    dtb = os.path.join(staging, dtb_name)
+    if not (os.path.isfile(dtb) and os.path.getsize(dtb) > 0):
+        others = [f for f in sorted(os.listdir(staging))
+                  if f.endswith(".dtb") and os.path.isfile(os.path.join(staging, f))
+                  and os.path.getsize(os.path.join(staging, f)) > 0]
+        if not others:
+            raise RuntimeError("bundle has no %s and no other dtb" % dtb_name)
+        print("cubie-ota: warning: bundle has no %s, using %s"
+              % (dtb_name, others[0]), file=sys.stderr)
+    return img
 
 
-def write_extlinux(version, boot_dtb):
-    slot = os.path.join(SLOT_ROOT, version)
-    text = (
-        "default l0\n"
-        "menu title Radxa Cubie A5E Boot Options\n"
-        "prompt 0\n"
-        "timeout 0\n"
-        "\n"
-        "label l0\n"
-        "    menu label Debian GNU/Linux 12 (bookworm) %s\n"
-        "    linux %s/Image\n"
-        "    fdt %s/%s\n"
-        "    append root=PARTUUID=%s console=ttyAS0,115200n8 rootwait rw rootfstype=ext4 "
-        "quiet loglevel=3 systemd.show_status=0 udev.log_level=3 audit=0 nowatchdog "
-        "nmi_watchdog=0 panic=10 clk_ignore_unused mac_addr=${mac} mac1_addr=${mac1} "
-        "coherent_pool=2M irqchip.gicv3_pseudo_nmi=0 cgroup_enable=cpuset "
-        "cgroup_memory=1 cgroup_enable=memory swapaccount=1 kasan=off\n"
-    )
-    # kernel mounts the rootfs itself, so root must be PARTUUID or /dev/*,
-    # never UUID=: that needs an initrd.
-    root_part = root_partuuid()
-    with open(EXTLINUX + ".tmp", "w") as f:
-        f.write(text % (version, slot, slot, boot_dtb, root_part))
-    os.replace(EXTLINUX + ".tmp", EXTLINUX)
-
-
-def install_modules(slot):
-    tar = os.path.join(slot, "modules.tar.zst")
-    if not os.path.exists(tar):
+def swap_slot(staging, slot):
+    """Install a fully extracted staging tree as slot dir with renames only."""
+    try:
+        os.replace(staging, slot)
         return
-    subprocess.run(["tar", "--zstd", "-xf", tar, "-C", "/"], check=True)
+    except OSError as e:
+        if e.errno != errno.EXDEV:
+            raise
+    # /boot on its own filesystem: still never leave a half tree behind.
+    old = slot + ".old"
+    shutil.rmtree(old, ignore_errors=True)
+    if os.path.exists(slot):
+        os.replace(slot, old)
+    try:
+        shutil.move(staging, slot)
+    except OSError:
+        if os.path.exists(old) and not os.path.exists(slot):
+            os.replace(old, slot)
+        raise
+    shutil.rmtree(old, ignore_errors=True)
+
+
+def free_mib(path):
+    try:
+        return shutil.disk_usage(path).free // (1 << 20)
+    except OSError:
+        return None
+
+
+def check_space(path, need_mib, what):
+    os.makedirs(path, exist_ok=True)
+    free = free_mib(path)
+    if free is not None and free < need_mib:
+        print("cubie-ota: not enough space in %s for %s: need %d MiB, have %d MiB"
+              % (path, what, need_mib, free), file=sys.stderr)
+        return False
+    return True
+
+
+def pick_previous(st, version):
+    """Last runnable slot, never the slot being installed, never empty dirs."""
+    if st.get("pending"):
+        order = [st.get("previous"), st.get("version")]
+    else:
+        order = [st.get("slot"), st.get("version"), st.get("previous")]
+    order = list(order) + list_slots()
+    seen = set()
+    for cand in order:
+        if not isinstance(cand, str) or not cand or cand in seen or cand == version:
+            continue
+        seen.add(cand)
+        if slot_ok(cand):
+            return cand
+    return None
+
+
+def pick_rollback_target(st):
+    """Slot to fall back to, or None when only the factory /boot/Image is left."""
+    pending = st.get("pending_version")
+    order = [st.get("previous"), st.get("slot"), st.get("version")]
+    for cand in order + list_slots():
+        if not isinstance(cand, str) or not cand:
+            continue
+        if cand == pending:
+            continue
+        if slot_ok(cand):
+            return cand
+    return None
+
+
+def activate_slot(name, cfg):
+    """Modules first (best effort), then the one atomic extlinux switch."""
+    if not slot_ok(name):
+        return False
+    install_modules(os.path.join(SLOT_ROOT, name))
+    try:
+        write_slot_extlinux(name)
+    except (OSError, RuntimeError) as e:
+        print("cubie-ota: cannot point extlinux at %s: %s" % (name, e),
+              file=sys.stderr)
+        return False
+    return True
+
+
+def cmd_status(_args):
+    cfg = conf()
+    st, ok = load_state()
+    slots = list_slots()
+    print("installed version : %s" % st["version"])
+    print("boot slot         : %s" % (st["slot"] or "factory /boot/Image"))
+    print("pending           : %s" % (st["pending_version"] if st["pending"] else "no"))
+    print("previous slot     : %s" % st["previous"])
+    print("boot attempts     : %s / %s" % (st["attempts"], cfg["max_attempts"]))
+    print("slots on disk     : %s" % (", ".join(slots) if slots else "none"))
+    print("extlinux target   : %s" % (current_extlinux_slot() or "factory /boot/Image"))
+    print("state file        : %s" % ("ok" if ok else "missing or unreadable"))
+    return 0
+
+
+def cmd_check(args):
+    """Report or announce an update. Must never fail an `apt update`."""
+    quiet = bool(getattr(args, "apt", False))
+    cfg = conf()
+    st, _ok = load_state()
+
+    def say(msg, err=False):
+        if quiet:
+            return
+        print(msg, file=sys.stderr if err else sys.stdout)
+
+    try:
+        rel = latest_release(cfg)
+    except NET_ERRORS + (ValueError,) as e:
+        # no network, 403 rate limit, timeout, HTML error page: all non-fatal
+        say("cubie-ota: update check failed: %s" % e, err=True)
+        return 0 if quiet else 1
+
+    tag_raw = rel.get("tag_name")
+    man = find_asset(rel, cfg["manifest"])
+    man_version = None
+    if man:
+        url = man.get("browser_download_url")
+        try:
+            if url:
+                man_version = api(url, cfg).get("version")
+        except NET_ERRORS + (ValueError, AttributeError):
+            man_version = None
+    try:
+        ver = resolve_version(tag_raw, man_version)
+    except ValueError as e:
+        say("cubie-ota: %s" % e, err=True)
+        return 0
+    if not man:
+        # releases published without cubie-ota.json are simply not offered
+        say("cubie-ota: release %s has no %s" % (ver, cfg["manifest"]), err=True)
+        return 0
+    if ver == st["version"]:
+        say("cubie-ota: up to date (%s)" % ver)
+        return 0
+    print("cubie-ota: %s available (installed %s)" % (ver, st["version"]))
+    if quiet:
+        print("cubie-ota: run 'sudo cubie-ota apply' to stage it, reboot to activate")
+    return 0
 
 
 def cmd_apply(args):
-    cfg, st = conf(), load_state()
-    rel = latest_release(cfg)
-    tag = rel.get("tag_name", "").lstrip("vV")
-    if not tag:
-        print("cubie-ota: release has no tag")
-        return 1
-    if tag == st["version"] and not args.force:
-        print("cubie-ota: already on %s" % tag)
-        return 0
-    bundle = find_asset(rel, cfg["asset"])
-    man = find_asset(rel, cfg["manifest"])
-    if not bundle or not man:
-        print("cubie-ota: release %s missing %s or %s" % (tag, cfg["asset"], cfg["manifest"]))
+    cfg = conf()
+    st, _state_ok = load_state()
+
+    try:
+        rel = latest_release(cfg)
+    except NET_ERRORS + (ValueError,) as e:
+        print("cubie-ota: cannot reach GitHub: %s" % e, file=sys.stderr)
         return 1
 
-    os.makedirs(SLOT_ROOT, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=STATE_DIR) as tmp:
-        man_path = os.path.join(tmp, "manifest.json")
-        bun_path = os.path.join(tmp, "bundle.tar.zst")
-        gh_get(man["browser_download_url"], man_path)
-        with open(man_path) as f:
-            meta = json.load(f)
-        expected = meta.get("sha256", "")
-        gh_get(bundle["browser_download_url"], bun_path)
-        actual = sha256_file(bun_path)
-        if expected and actual != expected:
-            print("cubie-ota: checksum mismatch\n  expected %s\n  actual   %s" % (expected, actual))
-            return 1
-        print("cubie-ota: checksum verified (%s)" % actual[:16])
+    os.makedirs(STATE_DIR, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(dir=STATE_DIR) as tmp:
+            man = find_asset(rel, cfg["manifest"])
+            if not man or not man.get("browser_download_url"):
+                print("cubie-ota: release %s has no %s"
+                      % (rel.get("tag_name"), cfg["manifest"]), file=sys.stderr)
+                return 1
+            man_path = os.path.join(tmp, "manifest.json")
+            try:
+                gh_get(man["browser_download_url"], man_path, cfg)
+                with open(man_path) as f:
+                    meta = json.load(f)
+            except NET_ERRORS + (ValueError,) as e:
+                print("cubie-ota: bad or unreachable manifest: %s" % e, file=sys.stderr)
+                return 1
+            if not isinstance(meta, dict):
+                print("cubie-ota: manifest is not an object", file=sys.stderr)
+                return 1
 
-        slot = os.path.join(SLOT_ROOT, tag)
-        shutil.rmtree(slot, ignore_errors=True)
-        os.makedirs(slot)
-        extract_bundle(bun_path, slot)
-        if not os.path.exists(os.path.join(slot, "Image")):
-            print("cubie-ota: bundle has no Image")
-            return 1
+            version = resolve_version(rel.get("tag_name"), meta.get("version"))
 
-    dtb = meta.get("dtb", "sun55i-a527-cubie-a5e.dtb")
-    install_modules(slot)
-    write_extlinux(tag, dtb)
+            bundle = find_asset(rel, meta.get("asset") or cfg["asset"])
+            if not bundle:
+                bundle = find_asset(rel, cfg["asset"])
+            url = (bundle or {}).get("browser_download_url")
+            if not bundle or not url:
+                print("cubie-ota: release %s has no %s"
+                      % (version, meta.get("asset") or cfg["asset"]), file=sys.stderr)
+                return 1
 
-    st["previous"] = st["slot"] or st["version"]
+            expected = str(meta.get("sha256") or "").strip().lower()
+            if not re.match(r"^[0-9a-f]{64}$", expected):
+                # a bundle without a hash is not verifiable: refuse instead of
+                # trusting whatever the CDN served
+                print("cubie-ota: manifest has no valid sha256, refusing to apply",
+                      file=sys.stderr)
+                return 1
+
+            if version == st["version"] and not args.force:
+                print("cubie-ota: already on %s" % version)
+                return 0
+
+            dl_mib = _int(cfg, "bundle_mb", 200)
+            slot_mib = _int(cfg, "slot_mb", 210)
+            size = _as_int(bundle.get("size"))
+            if size:
+                dl_mib = max(dl_mib, (size + (1 << 20) - 1) >> 20)
+                slot_mib = max(slot_mib, dl_mib)
+            if not check_space(STATE_DIR, dl_mib + slot_mib + 16,
+                               "download and staging"):
+                return 1
+            if not check_space(BOOT, slot_mib + 16, "boot slot"):
+                return 1
+
+            bun_path = os.path.join(tmp, "bundle.tar.zst")
+            try:
+                gh_get(url, bun_path, cfg)
+            except NET_ERRORS as e:
+                print("cubie-ota: download failed: %s" % e, file=sys.stderr)
+                return 1
+            actual = sha256_file(bun_path)
+            if actual != expected:
+                print("cubie-ota: checksum mismatch\n  expected %s\n  actual   %s"
+                      % (expected, actual), file=sys.stderr)
+                return 1
+            print("cubie-ota: checksum verified (%s)" % actual[:16])
+
+            dtb_name = str(meta.get("dtb") or DTB_DEFAULT)
+            staging = os.path.join(tmp, "slot")
+            try:
+                stage_bundle(bun_path, staging, dtb_name)
+            except (OSError, RuntimeError, tarfile.TarError) as e:
+                print("cubie-ota: cannot unpack bundle: %s" % e, file=sys.stderr)
+                return 1
+
+            # modules go in before extlinux so a failed install never leaves
+            # extlinux on a half-prepared slot
+            install_modules(staging)
+
+            os.makedirs(SLOT_ROOT, exist_ok=True)
+            slot = os.path.join(SLOT_ROOT, version)
+            swap_slot(staging, slot)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as e:
+        print("cubie-ota: apply failed: %s" % e, file=sys.stderr)
+        return 1
+
+    if not slot_ok(version):
+        print("cubie-ota: slot %s is not bootable after install" % version,
+              file=sys.stderr)
+        return 1
+
+    previous = pick_previous(st, version)
+    if previous is None and not (os.path.isfile(os.path.join(BOOT, "Image"))
+                                 and factory_fdt()):
+        print("cubie-ota: no rollback target at all, refusing to switch", file=sys.stderr)
+        return 1
+
+    old = dict(st)
+    st["previous"] = previous
     st["pending"] = True
-    st["pending_version"] = tag
-    st["slot"] = tag
+    st["pending_version"] = version
+    st["slot"] = version
     st["attempts"] = 0
-    save_state(st)
-    print("cubie-ota: %s staged in %s" % (tag, slot))
+    st["rollbacks"] = 0
+    try:
+        save_state(st)
+    except OSError as e:
+        print("cubie-ota: cannot write state: %s" % e, file=sys.stderr)
+        return 1
+    try:
+        write_slot_extlinux(version)
+    except (OSError, RuntimeError) as e:
+        # roll extlinux and state back: nothing was switched
+        try:
+            save_state(old)
+        except OSError:
+            pass
+        print("cubie-ota: cannot write %s: %s" % (EXTLINUX, e), file=sys.stderr)
+        return 1
+
+    print("cubie-ota: %s staged in %s" % (version, slot))
     print("cubie-ota: reboot to boot it; previous firmware kept until a good boot confirms")
     return 0
 
 
 def cmd_confirm(_args):
-    cfg, st = conf(), load_state()
+    cfg = conf()
+    st, _state_ok = load_state()
     if not st["pending"]:
-        st["attempts"] = 0
-        save_state(st)
+        if st["attempts"] or st["rollbacks"]:
+            st["attempts"] = 0
+            st["rollbacks"] = 0
+            try:
+                save_state(st)
+            except OSError:
+                pass
         return 0
-    st["version"] = st["pending_version"]
+    ver = st["pending_version"]
+    if not ver or not slot_ok(ver):
+        # never accept a boot whose slot cannot be rolled back to later
+        print("cubie-ota: pending slot %s is not usable; not confirming "
+              "(boot-guard will roll back)" % ver, file=sys.stderr)
+        return 1
+    st["version"] = ver
+    st["slot"] = ver
     st["pending"] = False
+    st["pending_version"] = None
     st["attempts"] = 0
-    save_state(st)
-    with open(cfg["release_file"], "w") as f:
-        f.write("VERSION=%s\n" % st["version"])
+    st["rollbacks"] = 0
+    try:
+        save_state(st)
+    except OSError as e:
+        print("cubie-ota: cannot write state: %s" % e, file=sys.stderr)
+        return 1
+    try:
+        path = cfg["release_file"]
+        with open(path + ".tmp", "w") as f:
+            f.write("VERSION=%s\n" % ver)
+        os.replace(path + ".tmp", path)
+    except OSError as e:
+        print("cubie-ota: warning: cannot update %s: %s"
+              % (cfg["release_file"], e), file=sys.stderr)
     prune_slots(cfg, st)
-    subprocess.run(["systemctl", "restart", "aic8800-bt.service"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print("cubie-ota: boot confirmed for %s" % st["version"])
+    try:
+        subprocess.run(["systemctl", "restart", "aic8800-bt.service"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    print("cubie-ota: boot confirmed for %s" % ver)
     return 0
 
 
 def prune_slots(cfg, st):
-    keep = int(cfg["keep_slots"])
-    versions = sorted((d for d in os.listdir(SLOT_ROOT)
-                       if os.path.isdir(os.path.join(SLOT_ROOT, d))),
-                      key=lambda v: os.path.getmtime(os.path.join(SLOT_ROOT, v)),
-                      reverse=True)
-    protected = {st["version"], st["previous"]}
-    for old in versions[keep:]:
+    """Delete old slots, never the running one, never the rollback target."""
+    keep = _int(cfg, "keep_slots", 2)
+    slots = list_slots()
+    if not slots:
+        return
+    protected = {st.get("slot"), st.get("version"), st.get("previous"),
+                 st.get("pending_version"), current_extlinux_slot()}
+    protected.discard(None)
+    target = max(keep, len(protected))
+    count = len(slots)
+    for old in reversed(slots):          # oldest first
+        if count <= target:
+            break
         if old in protected:
             continue
         shutil.rmtree(os.path.join(SLOT_ROOT, old), ignore_errors=True)
+        count -= 1
         print("cubie-ota: pruned slot %s" % old)
 
 
@@ -302,49 +809,158 @@ def cmd_boot_guard(_args):
     persistent U-Boot env on this board), upgrade to a bootloader bootcount
     when fw_setenv works on the board.
     """
-    cfg, st = conf(), load_state()
-    if not st["pending"]:
-        return 0
-    st["attempts"] = int(st["attempts"]) + 1
-    save_state(st)
-    if st["attempts"] <= int(cfg["max_attempts"]):
+    try:
+        return _boot_guard()
+    except Exception as e:               # never fail the boot, never loop
+        print("cubie-ota: boot-guard error: %s" % e, file=sys.stderr)
         return 0
 
-    prev = st["previous"]
+
+def _boot_guard():
+    cfg = conf()
+    st, _state_ok = load_state()
+    if not st["pending"]:
+        return 0
+    pending = st["pending_version"]
+    current = current_extlinux_slot()
+
+    if pending and current != pending and slot_ok(st["slot"] or ""):
+        # extlinux already points away from the failing slot: we booted the
+        # rollback already. Settle the state and do not reboot again.
+        st["pending"] = False
+        st["pending_version"] = None
+        st["attempts"] = 0
+        st["rollbacks"] += 1
+        save_state(st)
+        return 0
+
+    st["attempts"] += 1
+    save_state(st)
+    if st["attempts"] <= _int(cfg, "max_attempts", 3):
+        return 0
+
     print("cubie-ota: %s failed %s boots, rolling back to %s"
-          % (st["pending_version"], st["attempts"], prev))
-    prev_slot = os.path.join(SLOT_ROOT, prev) if prev else None
-    if not prev_slot or not os.path.isdir(prev_slot):
-        prev_slot = os.path.join(SLOT_ROOT, st["version"])
-    install_modules(prev_slot)
-    write_extlinux(os.path.basename(prev_slot), "sun55i-a527-cubie-a5e.dtb")
+          % (pending, st["attempts"], st["previous"]), file=sys.stderr)
+    if st["rollbacks"] >= 1:
+        # one rollback per staged update is the hard cap: log and stay put
+        print("cubie-ota: rollback already performed, not rebooting again",
+              file=sys.stderr)
+        st["pending"] = False
+        st["pending_version"] = None
+        st["attempts"] = 0
+        save_state(st)
+        return 0
+
+    target = pick_rollback_target(st)
+    ok = activate_slot(target, cfg) if target else False
+    if not ok:
+        try:
+            ok = write_factory_extlinux()
+        except (OSError, RuntimeError) as e:
+            print("cubie-ota: cannot restore default boot config: %s" % e,
+                  file=sys.stderr)
+            ok = False
+    if not ok:
+        print("cubie-ota: no bootable rollback target, leaving boot config alone",
+              file=sys.stderr)
+        st["pending"] = False
+        st["pending_version"] = None
+        st["attempts"] = 0
+        save_state(st)
+        return 0                   # no reboot: rebooting would loop
+
+    if target:
+        st["version"] = target
+        st["slot"] = target
+        try:
+            path = cfg["release_file"]
+            with open(path + ".tmp", "w") as f:
+                f.write("VERSION=%s\n" % target)
+            os.replace(path + ".tmp", path)
+        except OSError as e:
+            print("cubie-ota: warning: cannot update %s: %s"
+                  % (cfg["release_file"], e), file=sys.stderr)
+    else:
+        st["slot"] = None
     st["pending"] = False
     st["pending_version"] = None
-    st["slot"] = os.path.basename(prev_slot)
     st["attempts"] = 0
+    st["rollbacks"] += 1
     save_state(st)
-    subprocess.run(["systemctl", "reboot"], check=False)
+    try:
+        subprocess.run(["systemctl", "reboot"], check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        print("cubie-ota: cannot reboot: %s" % e, file=sys.stderr)
     return 0
 
 
 def cmd_rollback(_args):
-    cfg, st = conf(), load_state()
-    prev = st["previous"]
-    if not prev or not os.path.isdir(os.path.join(SLOT_ROOT, prev)):
-        print("cubie-ota: no previous slot to roll back to")
-        return 1
-    install_modules(os.path.join(SLOT_ROOT, prev))
-    write_extlinux(prev, "sun55i-a527-cubie-a5e.dtb")
-    st["slot"] = prev
-    st["version"] = prev
-    st["pending"] = False
-    st["pending_version"] = None
-    st["attempts"] = 0
-    save_state(st)
-    with open(cfg["release_file"], "w") as f:
-        f.write("VERSION=%s\n" % prev)
-    print("cubie-ota: rolled back to %s, reboot to activate" % prev)
-    return 0
+    cfg = conf()
+    st, state_ok = load_state()
+
+    target = None
+    if state_ok:
+        prev = st.get("previous")
+        target = prev if slot_ok(prev) else pick_rollback_target(st)
+
+    if target is None and not state_ok:
+        # state.json lost or corrupt: go back to the shipped /boot/Image pair
+        try:
+            if write_factory_extlinux():
+                st["pending"] = False
+                st["pending_version"] = None
+                st["attempts"] = 0
+                st["slot"] = None
+                save_state(st)
+                print("cubie-ota: state was unreadable, reverted to /boot/Image, "
+                      "reboot to activate")
+                return 0
+        except (OSError, RuntimeError) as e:
+            print("cubie-ota: cannot restore default boot config: %s" % e,
+                  file=sys.stderr)
+        if not list_slots():
+            print("cubie-ota: no previous slot and no usable /boot/Image",
+                  file=sys.stderr)
+            return 1
+        target = pick_rollback_target({"pending_version": None})
+
+    if target and activate_slot(target, cfg):
+        st["slot"] = target
+        st["version"] = target
+        st["pending"] = False
+        st["pending_version"] = None
+        st["attempts"] = 0
+        try:
+            save_state(st)
+        except OSError as e:
+            print("cubie-ota: warning: cannot write state: %s" % e, file=sys.stderr)
+        try:
+            path = cfg["release_file"]
+            with open(path + ".tmp", "w") as f:
+                f.write("VERSION=%s\n" % target)
+            os.replace(path + ".tmp", path)
+        except OSError as e:
+            print("cubie-ota: warning: cannot update %s: %s"
+                  % (cfg["release_file"], e), file=sys.stderr)
+        print("cubie-ota: rolled back to %s, reboot to activate" % target)
+        return 0
+
+    try:
+        if write_factory_extlinux():
+            st["pending"] = False
+            st["pending_version"] = None
+            st["attempts"] = 0
+            st["slot"] = None
+            save_state(st)
+            print("cubie-ota: no previous slot, reverted to /boot/Image, "
+                  "reboot to activate")
+            return 0
+    except (OSError, RuntimeError) as e:
+        print("cubie-ota: cannot restore default boot config: %s" % e,
+              file=sys.stderr)
+
+    print("cubie-ota: no previous slot to roll back to", file=sys.stderr)
+    return 1
 
 
 def main():

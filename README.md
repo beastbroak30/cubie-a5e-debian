@@ -51,7 +51,8 @@ See [FLASHING.md](FLASHING.md) for the flashing procedure and
 ```
 AGENTS.md                 build rules, verified source registry, board state
 FLASHING.md               how to write the image to an SD card
-docs/                     pin map, reference layout, RPi-compat plan, board manifest
+docs/                     pin map, reference layout, RPi-compat plan, OTA design, board manifest
+ota/                      cubie-ota CLI, systemd units, apt hook, installer
 scripts/build/            numbered image build steps (debootstrap, kernel, U-Boot, assemble)
 scripts/board/            scripts that run on the board itself
 scripts/windows/          host-side helpers: flashing, serial console, SSH, NAT

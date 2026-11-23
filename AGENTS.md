@@ -146,6 +146,12 @@ Mark `[x]` only after the artifact exists and was verified.
 - [x] Phase 13 — License and attribution docs inside the image and on the live board:
   `/usr/share/doc/cubie-a5e-debian/{NOTICE,AUTHORS}`, `/usr/share/doc/aic8800-firmware/`,
   `/lib/firmware/aic8800d80/README.license`. Both trees verified identical after the push.
+- [x] Phase 14 — Fast boot: 16.0 s → **7.0 s** to multi-user on the board
+  (3.6 s kernel + 3.4 s userspace). `timeout 0`, no initrd on the default label,
+  `root=PARTUUID`, masked wait-online units, apt timers `Persistent=false`, zram `ALGO=zstd`.
+- [x] Phase 15 — OTA: `cubie-ota` + units + apt hook in the image and on the board,
+  slot `1.1.0` seeded, release `v1.1.0` published with `.img.gz`, bundle and manifest.
+  Live upgrade/rollback test on the board is the last open item.
 
 ## 8. Source registry (fill with verified URLs only)
 
@@ -215,6 +221,14 @@ Authoritative hardware facts from docs (not guessed):
   Bullseye R7 image is used only as a layout/offset reference.
 - Distribution: **Debian 12 Bookworm confirmed by user.** Bullseye rejected because it
   is past end of LTS security support (2026-08-31) and the bookworm apt repo 404s.
+- OTA: **GitHub releases as the update channel**, `cubie-ota` in the image, check triggered
+  from `apt update`, three failed boots roll back to the previous slot, old slot kept until a
+  confirmed boot. Firmware only (kernel `Image`, dtb, modules); bootloader never rewritten.
+- Boot speed: highest priority. Target reached **7.0 s** to multi-user
+  (3.6 s kernel + 3.4 s userspace), down from 16.0 s.
+- Publishing: image ships as `.img.gz` release asset (933 MB). The 4 GiB `.img` is never
+  attached because GitHub caps one asset at 2 GB. Bundle + manifest are host-uploaded;
+  CI validates the tracked manifest and opens the release.
 
 ## 10. Verification gates
 

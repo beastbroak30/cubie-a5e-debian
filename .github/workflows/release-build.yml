@@ -1,5 +1,9 @@
 name: Checks & Release
 
+# Image build is host-side by design: WSL2 builds the 4 GiB .img and the 197 MB
+# firmware bundle, then uploads release assets with `gh release upload`.
+# Do not add a fake build job here. CI runs checks only, plus release on v*.*.*.
+
 on:
   push:
     branches:
@@ -19,106 +23,172 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Gitleaks scans full history; tags arrive with it. Needed here only.
           fetch-depth: 0
 
       - name: Secret leak audit (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Personal repo: no license required. Unset secret is harmless.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
       - name: Pin map JSON integrity
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           import json
-          data = json.load(open('docs/cubie-a5e-pinmap.json'))
-          assert 'pins' in data, 'pinmap has no pins'
-          assert len(data['pins']) == 40, 'pinmap must describe 40 header pins'
+
+          with open('docs/cubie-a5e-pinmap.json', encoding='utf-8') as fh:
+              data = json.load(fh)
+          pins = data.get('pins')
+          assert isinstance(pins, list), 'pinmap has no pins list'
+          assert len(pins) == 40, f'pinmap must describe 40 header pins, got {len(pins)}'
           print('pinmap: 40 pins, OK')
           PY
 
-      - name: Shell syntax (bash -n) for every tracked script
+      - name: Shell syntax (bash -n) for tracked scripts
         run: |
-          set -e
-          mapfile -t files < <(git ls-files '*.sh')
-          for f in "${files[@]}"; do
-            bash -n "$f" || { echo "syntax error: $f"; exit 1; }
-          done
-          echo "bash -n: ${#files[@]} files OK"
+          set -euo pipefail
+          files=$(git ls-files -- '*.sh')
+          if [ -z "$files" ]; then
+            echo 'no tracked shell scripts found' >&2
+            exit 1
+          fi
+          count=0
+          while IFS= read -r f; do
+            bash -n "$f"
+            count=$((count + 1))
+          done <<< "$files"
+          echo "bash -n: $count files OK"
 
       - name: Python syntax for cubie-ota
         run: |
+          set -euo pipefail
+          test -f ota/cubie-ota
           python3 -m py_compile ota/cubie-ota
-          echo "cubie-ota compiles"
+          echo 'cubie-ota compiles'
 
       - name: systemd unit headers
         run: |
-          for u in ota/*.service ota/*.timer; do
-            grep -q '^\[Unit\]' "$u" || { echo "missing [Unit] in $u"; exit 1; }
-            grep -q '^\[\(Service\|Timer\)\]' "$u" || { echo "missing section in $u"; exit 1; }
+          set -euo pipefail
+          shopt -s nullglob
+          units=(ota/*.service ota/*.timer)
+          if [ "${#units[@]}" -eq 0 ]; then
+            echo 'no systemd units found' >&2
+            exit 1
+          fi
+          for u in "${units[@]}"; do
+            grep -q '^\[Unit\]' "$u" || { echo "missing [Unit] in $u" >&2; exit 1; }
+            grep -qE '^\[(Service|Timer)\]' "$u" || { echo "missing [Service] or [Timer] in $u" >&2; exit 1; }
           done
-          echo "unit files OK"
+          echo "unit headers OK: ${#units[@]} files"
 
       - name: apt hook and OTA config sanity
         run: |
-          test -f ota/99cubie-ota
+          set -euo pipefail
+          for f in ota/99cubie-ota ota/cubie-ota.conf; do
+            test -f "$f" || { echo "missing $f" >&2; exit 1; }
+          done
           grep -q 'cubie-ota check' ota/99cubie-ota
           grep -q '^repo=' ota/cubie-ota.conf
-          echo "ota config OK"
+          grep -q '^asset=' ota/cubie-ota.conf
+          grep -q '^manifest=' ota/cubie-ota.conf
+          echo 'OTA config OK'
 
   release:
     name: Create release (tag builds only)
     needs: checks
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # No tags needed here: release is created through the GitHub API.
       - uses: actions/checkout@v4
 
-      # The image (933 MB gz) and the firmware bundle (197 MB) are host-built and
-      # uploaded from the build machine with `gh release upload`: this job only
-      # validates the tracked manifest and opens the release.
-      - name: Verify OTA manifest matches the tag
+      - name: Resolve manifest path from tag
+        id: paths
         run: |
-          set -e
-          tag="${GITHUB_REF_NAME#v}"
-          f="output/v$tag/cubie-ota.json"
-          test -f "$f" || { echo "missing $f"; exit 1; }
-          python3 - "$f" "$tag" <<'PY'
-          import json, sys
-          m = json.load(open(sys.argv[1]))
-          tag = sys.argv[2]
-          assert m['version'] == tag, f"manifest version {m['version']} != {tag}"
-          assert len(m['sha256']) == 64, 'sha256 must be 64 hex chars'
-          assert m['asset'].endswith('.tar.zst')
-          print(f"manifest ok: {m['version']} {m['sha256'][:16]}")
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          manifest="output/v${version}/cubie-ota.json"
+          {
+            echo "tag=${tag}"
+            echo "version=${version}"
+            echo "manifest=${manifest}"
+          } >> "$GITHUB_OUTPUT"
+          echo "tag=${tag} version=${version} manifest=${manifest}"
+
+      - name: Verify OTA manifest matches the tag
+        env:
+          MANIFEST: ${{ steps.paths.outputs.manifest }}
+          VERSION: ${{ steps.paths.outputs.version }}
+        run: |
+          set -euo pipefail
+          test -f "$MANIFEST" || { echo "missing tracked manifest: $MANIFEST" >&2; exit 1; }
+          git ls-files --error-unmatch "$MANIFEST" >/dev/null 2>&1 || {
+            echo "manifest not tracked: $MANIFEST" >&2
+            exit 1
+          }
+          python3 - "$MANIFEST" "$VERSION" <<'PY'
+          import json
+          import re
+          import sys
+
+          manifest_path, version = sys.argv[1], sys.argv[2]
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version), \
+              f'tag version is not x.y.z: {version}'
+          with open(manifest_path, encoding='utf-8') as fh:
+              m = json.load(fh)
+          assert m.get('version') == version, \
+              f"manifest version {m.get('version')} != tag version {version}"
+          digest = m.get('sha256', '')
+          assert re.fullmatch(r'[0-9a-f]{64}', digest), \
+              'sha256 must be 64 lowercase hex chars'
+          assert m.get('asset') == 'cubie-a5e-firmware.tar.zst', \
+              f"unexpected manifest asset: {m.get('asset')}"
+          assert m.get('dtb'), 'manifest has no dtb'
+          print(f'manifest ok: {m["version"]} {digest[:16]}')
           PY
 
-      - name: Create GitHub release
+      - name: Create GitHub release with manifest attached
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "Radxa Cubie A5E - Debian 12 arm64 ${{ github.ref_name }}"
+          tag_name: ${{ steps.paths.outputs.tag }}
+          name: "Radxa Cubie A5E - Debian 12 arm64 ${{ steps.paths.outputs.tag }}"
           body_path: docs/OTA.md
           draft: false
           prerelease: false
-          fail_on_unmatched_files: false
-          files: |
-            output/v*/cubie-ota.json
+          # Throws before release() runs if the manifest is absent.
+          fail_on_unmatched_files: true
+          files: ${{ steps.paths.outputs.manifest }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remind about host-side assets
+      - name: Confirm manifest asset is attached
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.paths.outputs.tag }}
         run: |
+          set -euo pipefail
+          gh api "repos/$REPO/releases/tags/$TAG" --jq '.assets[].name' | grep -qx 'cubie-ota.json'
+          echo 'manifest asset confirmed on release'
+
+      - name: Print host-side asset upload command
+        env:
+          TAG: ${{ steps.paths.outputs.tag }}
+          VERSION: ${{ steps.paths.outputs.version }}
+        run: |
+          set -euo pipefail
           cat <<EOF
-          Release ${GITHUB_REF_NAME} created.
+          Release ${TAG} is open. The OTA manifest is already attached.
 
-          Upload the binaries from the build host (GitHub caps each asset at 2 GB,
-          so the 4 GiB .img is never attached, only the .img.gz):
+          From the WSL2 build host (GitHub caps one asset at 2 GB, so the
+          uncompressed .img is never uploaded):
 
-            gh release upload ${GITHUB_REF_NAME} \\
-              output/cubie-a5e-lite-arm64.img.gz \\
-              output/cubie-a5e-lite-arm64.img.gz.sha256 \\
-              output/v${GITHUB_REF_NAME#v}/cubie-a5e-firmware.tar.zst \\
-              output/v${GITHUB_REF_NAME#v}/cubie-ota.json --clobber
+            gh release upload ${TAG} output/cubie-a5e-lite-arm64.img.gz output/cubie-a5e-lite-arm64.img.gz.sha256 output/v${VERSION}/cubie-a5e-firmware.tar.zst --clobber
+
           EOF

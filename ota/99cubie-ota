@@ -1,5 +1,8 @@
 // Check for Cubie A5E firmware updates after every successful `apt update`.
-// Never blocks or fails the apt run: output is informational, exit code ignored.
+// Never blocks or fails the apt run: the check is bounded by `timeout 30`, its
+// output is informational, and `|| true` swallows the exit status. Drops the
+// old `su ... -c` wrapper because apt already runs as root and PAM sessions
+// are slow and noisy in a container/chroot.
 APT::Update::Post-Invoke-Success {
-  "su -s /bin/sh root -c '/usr/bin/cubie-ota check --apt' || true";
+  "timeout 30 /usr/bin/cubie-ota check --apt || true";
 };

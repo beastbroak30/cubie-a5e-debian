@@ -1,10 +1,23 @@
 [Unit]
 Description=Cubie A5E OTA confirm timer (mark staged firmware good after a clean boot)
-DefaultDependencies=no
+# Default dependencies kept: this timer lives in the normal running system
+# (timers.target), so it must not be started before basic.target and must be
+# stopped on shutdown. DefaultDependencies=no here would drop both.
+#
+# Boot impact: none. sysinit/basic/multi-user never wait for this unit, because
+# nothing orders itself After= cubie-ota-confirm.timer. OnBootSec=90 only
+# schedules a wakeup 90 s after boot has already finished.
 
 [Timer]
+# One confirmation per boot: OnBootSec only. No OnUnitActiveSec, no OnCalendar,
+# so a second run can only happen after the next reboot.
 OnBootSec=90
-AccuracySec=10s
+# Batch the wakeup; a few minutes of jitter costs nothing for a confirm.
+AccuracySec=1min
+# The board has no RTC, so monotonic timers are the only correct base and a
+# missed run must not be caught up after boot. Explicit no-op for OnBootSec,
+# kept to record the intent.
+Persistent=false
 Unit=cubie-ota-confirm.service
 
 [Install]

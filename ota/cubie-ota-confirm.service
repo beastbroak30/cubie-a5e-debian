@@ -1,7 +1,17 @@
 [Unit]
 Description=Cubie A5E OTA confirm (keep staged firmware, drop old slot)
-After=multi-user.target
+# Runs only once the boot is complete and the boot guard has already counted
+# this attempt, so a slot that never reaches multi-user is never confirmed.
+# No [Install] section on purpose: the timer owns activation (Unit= below), so
+# enabling this service directly would confirm firmware without a clean boot.
+DefaultDependencies=yes
+After=multi-user.target cubie-ota-boot.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/cubie-ota confirm
+# confirm is a one-shot bookkeeping step, not a daemon. A failure (e.g. /boot
+# full) must be visible in the journal and nothing else: no restart loop.
+Restart=no
+# Rewrites state.json, prunes slots, restarts aic8800-bt.service.
+TimeoutStartSec=120
