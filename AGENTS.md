@@ -244,6 +244,11 @@ Authoritative hardware facts from docs (not guessed):
 
 Board identity: `radxa@cubie-a5e`, password `radxa`, kernel `5.15.147+ #1 SMP PREEMPT`.
 
+The shipped image has **no `authorized_keys`** — SSH needs the password `radxa` on a fresh
+flash. Add the key after first boot (`mkdir -p ~/.ssh; chmod 700 ~/.ssh;` append
+`cubie_a5e.pub` to `~/.ssh/authorized_keys; chmod 600 …`). A key-only poll therefore reports
+"SSH down" on a freshly flashed card even though `sshd` is active and `usb0` answers ping.
+
 | Path | How |
 |---|---|
 | Serial console | Windows `COM5`, 115200 8N1, DTR+RTS asserted. Login prompt `cubie-a5e login:` |
