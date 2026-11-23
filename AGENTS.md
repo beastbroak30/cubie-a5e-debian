@@ -322,6 +322,7 @@ Backups taken 2026-11-21 before any further work:
 | `output/cubie-a5e-lite-arm64.img` (after locale patch) | `dd09820c3e7ca42b6b735eab91edf7e1d1e1b7c0ff0eadb1d18eb3180c3be866` |
 | `output/cubie-a5e-lite-arm64.img` (v1.1.0: fast boot + OTA) | `a6dbc27f9a47051ce1d0c963e03531d0d34458f2f6afd31ec78d84263c8c16d2` |
 | `output/cubie-a5e-lite-arm64.img.gz` (v1.1.0, 933 MB) | `d3a03463e81f9be000c413847e263eb41a644037f1eabd4f0dd071e223a7d559` |
+| `output/v1.0.0-ota-base.img` (v1.0.0 base stamped for the live OTA test) | `8c9dc79441518328a352a903912e2c40d5e440f7831a810e91719dca0b3c2091` |
 
 Author of record: **beastbroak30** — kernel and firmware development. Credit is inside the
 image (`/usr/share/doc/cubie-a5e-debian/AUTHORS` and `NOTICE`), in `README.md` and in
